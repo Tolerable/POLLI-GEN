@@ -1,0 +1,5 @@
+# Ignore specific scripts
+POLLI-GEN-*.py
+
+# Ignore generated images directory
+GENERATED/
