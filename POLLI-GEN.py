@@ -1,9 +1,11 @@
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox
 from PIL import Image, ImageTk
 import requests
 import io
 import os
+import win32clipboard
+import datetime
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -32,8 +34,8 @@ class ImageGeneratorApp:
         self.generate_button = tk.Button(root, text="Generate Image", command=self.generate_image)
         self.generate_button.grid(row=2, column=0, sticky="ew")
 
-        self.save_button = tk.Button(root, text="Save Image", command=self.save_image)
-        self.save_button.grid(row=2, column=1, sticky="ew")
+        self.copy_button = tk.Button(root, text="Copy to Clipboard", command=self.copy_to_clipboard)
+        self.copy_button.grid(row=2, column=1, sticky="ew")
 
         # Add a bottom border for easy resizing
         self.status_bar = tk.Label(root, text="", bg="grey", height=1)
@@ -65,12 +67,14 @@ class ImageGeneratorApp:
             return
         
         try:
+            # Generate image using Pollinations
             url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(prompt)}"
             response = requests.get(url)
             response.raise_for_status()
 
             self.image = Image.open(io.BytesIO(response.content))
             self.display_image(self.image)
+            self.save_image(self.image)
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to retrieve the image. Error: {e}")
@@ -97,16 +101,28 @@ class ImageGeneratorApp:
 
         return image.resize((new_width, new_height), Image.LANCZOS)
 
-    def save_image(self):
-        if self.image:
-            if not os.path.exists('./GENERATED'):
-                os.makedirs('./GENERATED')
-            save_path = filedialog.asksaveasfilename(defaultextension=".png", initialdir='./GENERATED', filetypes=[("PNG files", "*.png")])
-            if save_path:
-                self.image.save(save_path, "PNG")
-                messagebox.showinfo("Success", f"Image saved as {save_path}")
+    def save_image(self, image):
+        if not os.path.exists('./GENERATED'):
+            os.makedirs('./GENERATED')
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        save_path = f"./GENERATED/Image-{timestamp}.png"
+        image.save(save_path, "PNG")
+        self.saved_image_path = save_path
+
+    def copy_to_clipboard(self):
+        if self.saved_image_path:
+            image = Image.open(self.saved_image_path)
+            output = io.BytesIO()
+            image.convert("RGB").save(output, "BMP")
+            data = output.getvalue()[14:]
+            output.close()
+            win32clipboard.OpenClipboard()
+            win32clipboard.EmptyClipboard()
+            win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
+            win32clipboard.CloseClipboard()
+            messagebox.showinfo("Success", "Image copied to clipboard.")
         else:
-            messagebox.showerror("Error", "No image to save. Generate an image first.")
+            messagebox.showerror("Error", "No image to copy. Generate an image first.")
 
 if __name__ == "__main__":
     root = tk.Tk()
