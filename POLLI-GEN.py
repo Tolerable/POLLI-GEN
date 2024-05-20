@@ -25,54 +25,62 @@ class ImageGeneratorApp:
         self.always_on_top_var = tk.BooleanVar(value=True)
         self.options_menu.add_checkbutton(label="Always on Top", onvalue=True, offvalue=False, variable=self.always_on_top_var, command=self.toggle_always_on_top)
 
+        self.nologo_password_label = tk.Label(root, text="nologo Password (optional):")
+        self.nologo_password_label.grid(row=0, column=0, sticky="e")
+
+        self.nologo_password_entry = tk.Entry(root)
+        self.nologo_password_entry.grid(row=0, column=1, sticky="w")
+
+        self.load_nologo_password()
+
         self.label = tk.Label(root, text="Enter your prompt and click 'Generate Image':")
-        self.label.grid(row=0, column=0, columnspan=2, sticky="ew")
+        self.label.grid(row=1, column=0, columnspan=2, sticky="ew")
 
         self.prompt_entry = tk.Entry(root)
-        self.prompt_entry.grid(row=1, column=0, columnspan=2, sticky="ew")
+        self.prompt_entry.grid(row=2, column=0, columnspan=2, sticky="ew")
 
         self.private_var = tk.BooleanVar(value=True)
         self.private_checkbutton = tk.Checkbutton(root, text="Private", variable=self.private_var)
-        self.private_checkbutton.grid(row=2, column=0, columnspan=2, sticky="w")
+        self.private_checkbutton.grid(row=3, column=0, columnspan=2, sticky="w")
 
         self.seed_label = tk.Label(root, text="Seed (optional):")
-        self.seed_label.grid(row=3, column=0, sticky="e")
+        self.seed_label.grid(row=4, column=0, sticky="e")
 
         self.seed_entry = tk.Entry(root)
-        self.seed_entry.grid(row=3, column=1, sticky="w")
+        self.seed_entry.grid(row=4, column=1, sticky="w")
 
         self.width_label = tk.Label(root, text="Width (optional):")
-        self.width_label.grid(row=4, column=0, sticky="e")
+        self.width_label.grid(row=5, column=0, sticky="e")
 
         self.width_entry = tk.Entry(root)
-        self.width_entry.grid(row=4, column=1, sticky="w")
+        self.width_entry.grid(row=5, column=1, sticky="w")
 
         self.height_label = tk.Label(root, text="Height (optional):")
-        self.height_label.grid(row=5, column=0, sticky="e")
+        self.height_label.grid(row=6, column=0, sticky="e")
 
         self.height_entry = tk.Entry(root)
-        self.height_entry.grid(row=5, column=1, sticky="w")
+        self.height_entry.grid(row=6, column=1, sticky="w")
 
         self.style_label = tk.Label(root, text="Visual Style:")
-        self.style_label.grid(row=6, column=0, sticky="e")
+        self.style_label.grid(row=7, column=0, sticky="e")
 
         self.style_options = ["", "anime", "cartoon", "photograph", "portrait", "illustration", "caricature", "hentai", "boudoir"]
         self.style_var = tk.StringVar()
         self.style_menu = tk.OptionMenu(root, self.style_var, *self.style_options)
-        self.style_menu.grid(row=6, column=1, sticky="w")
+        self.style_menu.grid(row=7, column=1, sticky="w")
 
         self.generate_button = tk.Button(root, text="Generate Image", command=self.generate_image)
-        self.generate_button.grid(row=7, column=0, sticky="ew")
+        self.generate_button.grid(row=8, column=0, sticky="ew")
 
         self.copy_button = tk.Button(root, text="Copy to Clipboard", command=self.copy_to_clipboard)
-        self.copy_button.grid(row=7, column=1, sticky="ew")
+        self.copy_button.grid(row=8, column=1, sticky="ew")
 
         # Add a bottom border for easy resizing
         self.status_bar = tk.Label(root, text="", bg="grey", height=1)
-        self.status_bar.grid(row=8, column=0, columnspan=2, sticky="ew")
+        self.status_bar.grid(row=9, column=0, columnspan=2, sticky="ew")
 
         self.canvas = tk.Canvas(root, bg="white")
-        self.canvas.grid(row=9, column=0, columnspan=2, sticky="nsew")
+        self.canvas.grid(row=10, column=0, columnspan=2, sticky="nsew")
 
         self.image = None
         self.display_image_resized = None
@@ -80,12 +88,15 @@ class ImageGeneratorApp:
         self.root.bind("<Configure>", self.resize_image)
 
         # Configure grid to make canvas expandable
-        self.root.grid_rowconfigure(9, weight=1)
+        self.root.grid_rowconfigure(10, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
 
         self.previous_width = self.root.winfo_width()
         self.previous_height = self.root.winfo_height()
+
+        # Save nologo password on exit
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def toggle_always_on_top(self):
         self.root.attributes("-topmost", self.always_on_top_var.get())
@@ -101,7 +112,13 @@ class ImageGeneratorApp:
         if style:
             prompt += f" {style}"
         
-        params = ["nolog=true"]
+        nologo_password = self.nologo_password_entry.get()
+        if nologo_password:
+            nologo_param = f"nologo={nologo_password}"
+        else:
+            nologo_param = "nologo=true"
+        
+        params = [nologo_param]
         
         if self.private_var.get():
             params.append("private=true")
@@ -175,6 +192,20 @@ class ImageGeneratorApp:
             win32clipboard.CloseClipboard()
         else:
             messagebox.showerror("Error", "No image to copy. Generate an image first.")
+
+    def load_nologo_password(self):
+        if os.path.exists("nologo_password.txt"):
+            with open("nologo_password.txt", "r") as file:
+                password = file.read().strip()
+                self.nologo_password_entry.insert(0, password)
+
+    def save_nologo_password(self):
+        with open("nologo_password.txt", "w") as file:
+            file.write(self.nologo_password_entry.get())
+
+    def on_closing(self):
+        self.save_nologo_password()
+        self.root.destroy()
 
 if __name__ == "__main__":
     root = tk.Tk()
