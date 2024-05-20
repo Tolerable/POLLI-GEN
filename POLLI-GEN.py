@@ -8,11 +8,22 @@ import win32clipboard
 import datetime
 import random
 
+DEFAULT_STYLES = [
+    "anime", "cartoon", "photograph", "portrait",
+    "illustration", "caricature", "hentai", "boudoir"
+]
+
 class ImageGeneratorApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Pollinations Image Generator")
         self.root.attributes("-topmost", True)
+
+        # Predefined styles
+        self.default_styles = DEFAULT_STYLES
+        self.user_styles = self.load_user_styles()
+
+        self.styles = self.default_styles + self.user_styles
 
         # Create the menu bar
         self.menu_bar = tk.Menu(self.root)
@@ -63,23 +74,27 @@ class ImageGeneratorApp:
         self.style_label = tk.Label(root, text="Visual Style:")
         self.style_label.grid(row=7, column=0, sticky="e")
 
-        self.style_options = ["", "anime", "cartoon", "photograph", "portrait", "illustration", "caricature", "hentai", "boudoir"]
         self.style_var = tk.StringVar()
-        self.style_menu = tk.OptionMenu(root, self.style_var, *self.style_options)
+        self.style_menu = tk.OptionMenu(root, self.style_var, *self.styles)
         self.style_menu.grid(row=7, column=1, sticky="w")
 
+        self.custom_style_entry = tk.Entry(root)
+        self.custom_style_entry.grid(row=8, column=0, columnspan=2, sticky="ew")
+        self.custom_style_entry.insert(0, "Type custom style here and press Enter")
+        self.custom_style_entry.bind("<Return>", self.add_custom_style)
+
         self.generate_button = tk.Button(root, text="Generate Image", command=self.generate_image)
-        self.generate_button.grid(row=8, column=0, sticky="ew")
+        self.generate_button.grid(row=9, column=0, sticky="ew")
 
         self.copy_button = tk.Button(root, text="Copy to Clipboard", command=self.copy_to_clipboard)
-        self.copy_button.grid(row=8, column=1, sticky="ew")
+        self.copy_button.grid(row=9, column=1, sticky="ew")
 
         # Add a bottom border for easy resizing
         self.status_bar = tk.Label(root, text="", bg="grey", height=1)
-        self.status_bar.grid(row=9, column=0, columnspan=2, sticky="ew")
+        self.status_bar.grid(row=10, column=0, columnspan=2, sticky="ew")
 
         self.canvas = tk.Canvas(root, bg="white")
-        self.canvas.grid(row=10, column=0, columnspan=2, sticky="nsew")
+        self.canvas.grid(row=11, column=0, columnspan=2, sticky="nsew")
 
         self.image = None
         self.display_image_resized = None
@@ -87,7 +102,7 @@ class ImageGeneratorApp:
         self.root.bind("<Configure>", self.resize_image)
 
         # Configure grid to make canvas expandable
-        self.root.grid_rowconfigure(10, weight=1)
+        self.root.grid_rowconfigure(11, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
 
@@ -98,6 +113,28 @@ class ImageGeneratorApp:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         self.load_settings()
+
+    def load_user_styles(self):
+        user_styles = []
+        if os.path.exists("user_styles.txt"):
+            with open("user_styles.txt", "r") as file:
+                user_styles = [line.strip() for line in file.readlines()]
+        return user_styles
+
+    def save_user_styles(self):
+        with open("user_styles.txt", "w") as file:
+            for style in self.user_styles:
+                file.write(style + "\n")
+
+    def add_custom_style(self, event=None):
+        new_style = self.custom_style_entry.get().strip()
+        if new_style and new_style not in self.styles:
+            self.user_styles.append(new_style)
+            self.styles.append(new_style)
+            self.style_menu['menu'].add_command(label=new_style, command=tk._setit(self.style_var, new_style))
+            self.save_user_styles()
+            self.custom_style_entry.delete(0, tk.END)
+            self.custom_style_entry.insert(0, "Type custom style here and press Enter")
 
     def toggle_always_on_top(self):
         self.root.attributes("-topmost", self.always_on_top_var.get())
