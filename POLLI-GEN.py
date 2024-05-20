@@ -6,6 +6,7 @@ import io
 import os
 import win32clipboard
 import datetime
+import random
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -30,8 +31,6 @@ class ImageGeneratorApp:
 
         self.nologo_password_entry = tk.Entry(root)
         self.nologo_password_entry.grid(row=0, column=1, sticky="w")
-
-        self.load_nologo_password()
 
         self.label = tk.Label(root, text="Enter your prompt and click 'Generate Image':")
         self.label.grid(row=1, column=0, columnspan=2, sticky="ew")
@@ -95,8 +94,10 @@ class ImageGeneratorApp:
         self.previous_width = self.root.winfo_width()
         self.previous_height = self.root.winfo_height()
 
-        # Save nologo password on exit
+        # Save settings on exit
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        self.load_settings()
 
     def toggle_always_on_top(self):
         self.root.attributes("-topmost", self.always_on_top_var.get())
@@ -124,8 +125,10 @@ class ImageGeneratorApp:
             params.append("private=true")
         
         seed = self.seed_entry.get()
-        if seed:
+        if seed and seed != '-1':
             params.append(f"seed={seed}")
+        elif seed == '-1':
+            params.append(f"seed={random.randint(0, 99999)}") # Use a random seed if -1
         
         width = self.width_entry.get()
         if width:
@@ -193,18 +196,29 @@ class ImageGeneratorApp:
         else:
             messagebox.showerror("Error", "No image to copy. Generate an image first.")
 
-    def load_nologo_password(self):
-        if os.path.exists("nologo_password.txt"):
-            with open("nologo_password.txt", "r") as file:
-                password = file.read().strip()
-                self.nologo_password_entry.insert(0, password)
+    def load_settings(self):
+        if os.path.exists("settings.txt"):
+            with open("settings.txt", "r") as file:
+                settings = file.read().splitlines()
+                if settings:
+                    self.nologo_password_entry.insert(0, settings[0])
+                    self.private_var.set(settings[1] == 'True')
+                    self.seed_entry.insert(0, settings[2])
+                    self.width_entry.insert(0, settings[3])
+                    self.height_entry.insert(0, settings[4])
+                    self.style_var.set(settings[5])
 
-    def save_nologo_password(self):
-        with open("nologo_password.txt", "w") as file:
-            file.write(self.nologo_password_entry.get())
+    def save_settings(self):
+        with open("settings.txt", "w") as file:
+            file.write(f"{self.nologo_password_entry.get()}\n")
+            file.write(f"{self.private_var.get()}\n")
+            file.write(f"{self.seed_entry.get()}\n")
+            file.write(f"{self.width_entry.get()}\n")
+            file.write(f"{self.height_entry.get()}\n")
+            file.write(f"{self.style_var.get()}\n")
 
     def on_closing(self):
-        self.save_nologo_password()
+        self.save_settings()
         self.root.destroy()
 
 if __name__ == "__main__":
