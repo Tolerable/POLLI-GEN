@@ -31,14 +31,9 @@ class ImageGeneratorApp:
         self.prompt_entry = tk.Entry(root)
         self.prompt_entry.grid(row=1, column=0, columnspan=2, sticky="ew")
 
-        self.private_var = tk.BooleanVar()
-        self.no_logo_var = tk.BooleanVar()
-
+        self.private_var = tk.BooleanVar(value=True)
         self.private_checkbutton = tk.Checkbutton(root, text="Private", variable=self.private_var)
-        self.private_checkbutton.grid(row=2, column=0, sticky="w")
-
-        self.no_logo_checkbutton = tk.Checkbutton(root, text="No Logo", variable=self.no_logo_var)
-        self.no_logo_checkbutton.grid(row=2, column=1, sticky="w")
+        self.private_checkbutton.grid(row=2, column=0, columnspan=2, sticky="w")
 
         self.seed_label = tk.Label(root, text="Seed (optional):")
         self.seed_label.grid(row=3, column=0, sticky="e")
@@ -106,13 +101,10 @@ class ImageGeneratorApp:
         if style:
             prompt += f" {style}"
         
-        params = []
+        params = ["nolog=true"]
         
         if self.private_var.get():
             params.append("private=true")
-        
-        if self.no_logo_var.get():
-            params.append("no_logo=true")
         
         seed = self.seed_entry.get()
         if seed:
@@ -181,7 +173,6 @@ class ImageGeneratorApp:
             win32clipboard.EmptyClipboard()
             win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
             win32clipboard.CloseClipboard()
-            messagebox.showinfo("Success", "Image copied to clipboard.")
         else:
             messagebox.showerror("Error", "No image to copy. Generate an image first.")
 
