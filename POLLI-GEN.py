@@ -31,18 +31,45 @@ class ImageGeneratorApp:
         self.prompt_entry = tk.Entry(root)
         self.prompt_entry.grid(row=1, column=0, columnspan=2, sticky="ew")
 
+        self.private_var = tk.BooleanVar()
+        self.no_logo_var = tk.BooleanVar()
+
+        self.private_checkbutton = tk.Checkbutton(root, text="Private", variable=self.private_var)
+        self.private_checkbutton.grid(row=2, column=0, sticky="w")
+
+        self.no_logo_checkbutton = tk.Checkbutton(root, text="No Logo", variable=self.no_logo_var)
+        self.no_logo_checkbutton.grid(row=2, column=1, sticky="w")
+
+        self.seed_label = tk.Label(root, text="Seed (optional):")
+        self.seed_label.grid(row=3, column=0, sticky="e")
+
+        self.seed_entry = tk.Entry(root)
+        self.seed_entry.grid(row=3, column=1, sticky="w")
+
+        self.width_label = tk.Label(root, text="Width (optional):")
+        self.width_label.grid(row=4, column=0, sticky="e")
+
+        self.width_entry = tk.Entry(root)
+        self.width_entry.grid(row=4, column=1, sticky="w")
+
+        self.height_label = tk.Label(root, text="Height (optional):")
+        self.height_label.grid(row=5, column=0, sticky="e")
+
+        self.height_entry = tk.Entry(root)
+        self.height_entry.grid(row=5, column=1, sticky="w")
+
         self.generate_button = tk.Button(root, text="Generate Image", command=self.generate_image)
-        self.generate_button.grid(row=2, column=0, sticky="ew")
+        self.generate_button.grid(row=6, column=0, sticky="ew")
 
         self.copy_button = tk.Button(root, text="Copy to Clipboard", command=self.copy_to_clipboard)
-        self.copy_button.grid(row=2, column=1, sticky="ew")
+        self.copy_button.grid(row=6, column=1, sticky="ew")
 
         # Add a bottom border for easy resizing
         self.status_bar = tk.Label(root, text="", bg="grey", height=1)
-        self.status_bar.grid(row=3, column=0, columnspan=2, sticky="ew")
+        self.status_bar.grid(row=7, column=0, columnspan=2, sticky="ew")
 
         self.canvas = tk.Canvas(root, bg="white")
-        self.canvas.grid(row=4, column=0, columnspan=2, sticky="nsew")
+        self.canvas.grid(row=8, column=0, columnspan=2, sticky="nsew")
 
         self.image = None
         self.display_image_resized = None
@@ -50,7 +77,7 @@ class ImageGeneratorApp:
         self.root.bind("<Configure>", self.resize_image)
 
         # Configure grid to make canvas expandable
-        self.root.grid_rowconfigure(4, weight=1)
+        self.root.grid_rowconfigure(8, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
 
@@ -65,10 +92,31 @@ class ImageGeneratorApp:
         if not prompt:
             messagebox.showerror("Error", "Please enter a prompt")
             return
+
+        params = []
+        
+        if self.private_var.get():
+            params.append("private=true")
+        
+        if self.no_logo_var.get():
+            params.append("no_logo=true")
+        
+        seed = self.seed_entry.get()
+        if seed:
+            params.append(f"seed={seed}")
+        
+        width = self.width_entry.get()
+        if width:
+            params.append(f"width={width}")
+        
+        height = self.height_entry.get()
+        if height:
+            params.append(f"height={height}")
+        
+        query_string = "&".join(params)
+        url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(prompt)}?{query_string}"
         
         try:
-            # Generate image using Pollinations
-            url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(prompt)}"
             response = requests.get(url)
             response.raise_for_status()
 
