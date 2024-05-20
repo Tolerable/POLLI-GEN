@@ -58,18 +58,26 @@ class ImageGeneratorApp:
         self.height_entry = tk.Entry(root)
         self.height_entry.grid(row=5, column=1, sticky="w")
 
+        self.style_label = tk.Label(root, text="Visual Style:")
+        self.style_label.grid(row=6, column=0, sticky="e")
+
+        self.style_options = ["", "anime", "cartoon", "photograph", "portrait", "illustration", "caricature", "hentai", "boudoir"]
+        self.style_var = tk.StringVar()
+        self.style_menu = tk.OptionMenu(root, self.style_var, *self.style_options)
+        self.style_menu.grid(row=6, column=1, sticky="w")
+
         self.generate_button = tk.Button(root, text="Generate Image", command=self.generate_image)
-        self.generate_button.grid(row=6, column=0, sticky="ew")
+        self.generate_button.grid(row=7, column=0, sticky="ew")
 
         self.copy_button = tk.Button(root, text="Copy to Clipboard", command=self.copy_to_clipboard)
-        self.copy_button.grid(row=6, column=1, sticky="ew")
+        self.copy_button.grid(row=7, column=1, sticky="ew")
 
         # Add a bottom border for easy resizing
         self.status_bar = tk.Label(root, text="", bg="grey", height=1)
-        self.status_bar.grid(row=7, column=0, columnspan=2, sticky="ew")
+        self.status_bar.grid(row=8, column=0, columnspan=2, sticky="ew")
 
         self.canvas = tk.Canvas(root, bg="white")
-        self.canvas.grid(row=8, column=0, columnspan=2, sticky="nsew")
+        self.canvas.grid(row=9, column=0, columnspan=2, sticky="nsew")
 
         self.image = None
         self.display_image_resized = None
@@ -77,7 +85,7 @@ class ImageGeneratorApp:
         self.root.bind("<Configure>", self.resize_image)
 
         # Configure grid to make canvas expandable
-        self.root.grid_rowconfigure(8, weight=1)
+        self.root.grid_rowconfigure(9, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
 
@@ -92,7 +100,12 @@ class ImageGeneratorApp:
         if not prompt:
             messagebox.showerror("Error", "Please enter a prompt")
             return
-
+        
+        # Add visual style to the prompt if selected
+        style = self.style_var.get()
+        if style:
+            prompt += f" {style}"
+        
         params = []
         
         if self.private_var.get():
