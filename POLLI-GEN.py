@@ -65,7 +65,7 @@ class ImageGeneratorApp:
         self.always_on_top_var = tk.BooleanVar(value=True)
         self.options_menu.add_checkbutton(label="Always on Top", onvalue=True, offvalue=False, variable=self.always_on_top_var, command=self.toggle_always_on_top)
 
-        self.label = tk.Label(root, text="Enter your prompt and click 'GENERATE':")
+        self.label = tk.Label(root, text="Enter your prompt and click 'GENERATE IMAGE':")
         self.label.grid(row=0, column=0, columnspan=6, sticky="ew")
 
         self.prompt_entry = tk.Entry(root, justify='center')
@@ -74,15 +74,15 @@ class ImageGeneratorApp:
 
         # Consolidate enhance and private checkbuttons
         self.enhance_var = tk.BooleanVar(value=False)
-        self.enhance_checkbutton = tk.Checkbutton(root, text="Enhance Image", variable=self.enhance_var)
+        self.enhance_checkbutton = tk.Checkbutton(root, text="ENHANCE IMAGE", variable=self.enhance_var)
         self.enhance_checkbutton.grid(row=2, column=0, columnspan=2, sticky="we")
 
         self.private_var = tk.BooleanVar(value=True)
-        self.private_checkbutton = tk.Checkbutton(root, text="Private", variable=self.private_var)
+        self.private_checkbutton = tk.Checkbutton(root, text="PRIVATE", variable=self.private_var)
         self.private_checkbutton.grid(row=2, column=2, columnspan=2, sticky="we")
 
         # Add seed and style on the same line
-        self.seed_label = tk.Label(root, text="Seed:")
+        self.seed_label = tk.Label(root, text="SEED:")
         self.seed_label.grid(row=3, column=0, columnspan=2, sticky="w", padx=20)
 
         self.seed_entry = tk.Entry(root, width=15)
@@ -127,11 +127,11 @@ class ImageGeneratorApp:
         self.custom_style_button = tk.Button(root, text="EDIT: USER STYLES", command=self.open_custom_styles_editor)
         self.custom_style_button.grid(row=6, column=0, columnspan=6, sticky="ew")
 
-        self.generate_button = tk.Button(root, text="GENERATE", command=self.on_generate_button_click)
-        self.generate_button.grid(row=7, column=0, columnspan=2, sticky="ew")
+        self.generate_button = tk.Button(root, text="GENERATE IMAGE", command=self.on_generate_button_click)
+        self.generate_button.grid(row=7, column=0, columnspan=4, sticky="ew")
 
         self.copy_button = tk.Button(root, text="COPY", command=self.copy_to_clipboard)
-        self.copy_button.grid(row=7, column=2, columnspan=4, sticky="ew")
+        self.copy_button.grid(row=7, column=4, columnspan=2, sticky="we")
 
         self.canvas = tk.Canvas(root, bg="white", width=512, height=512)
         self.canvas.grid(row=8, column=0, columnspan=6, sticky="nsew")
@@ -312,11 +312,11 @@ class ImageGeneratorApp:
         params.append(f"seed={seed}")
 
         if self.ratio_var.get() == "1:1":
-            width, height = "1024", "1024"
+            width, height = "2048", "2048"
         elif self.ratio_var.get() == "3:4":
-            width, height = "768", "1024"
+            width, height = "1536", "2048"
         elif self.ratio_var.get() == "16:9":
-            width, height = "1024", "576"
+            width, height = "2048", "1152"
         else:
             width = self.custom_width_entry.get()
             height = self.custom_height_entry.get()
