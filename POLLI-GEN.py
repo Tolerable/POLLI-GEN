@@ -14,7 +14,7 @@ style_tags = {
     "Anime": ("(anime:1.3), line drawing, asian influence, vibrant colors, cel shading, large expressive eyes, detailed hair, dynamic poses, action scenes, {prompt}", "realistic, deformed, noisy, blurry, stock photo"),
     "Op art": ("(op art), {prompt}, optical illusions, geometric, black and white, detailed", "no illusions, organic, colorful, low detail"),
     "Caricature": ("big head, big eyes, caricature, a caricature, digital rendering, (figurativism:0.8), {prompt}", "realistic, deformed, ugly, noisy"),
-    "Cartoon-2D": ("2D, 2-d, line drawing, cartoon, flat, vibrant, drawn, animation, illustration, exaggerated features, expressive poses, whimsical, dynamic motion, humorous, {prompt}, colorful, lively, imaginative, stylized, caricatured, energetic, playful, surreal, fantastical, animated, expressive, fluid, bold outlines, clear shapes, simple forms, iconic, classic)", "(photorealistic, hyperrealistic, 3d, photo, photographic"),
+    "Cartoon-2D": ("2D, 2-d, line drawing, cartoon, flat, vibrant, drawn, animation, illustration, exaggerated features, expressive poses, whimsical, dynamic motion, humorous, {prompt}, colorful, lively, imaginative, stylized, caricatured, energetic, playful, surreal, fantastical, animated, expressive, fluid, bold outlines, clear shapes, simple forms, iconic, classic", "photorealistic, hyperrealistic, 3d, photo, photographic"),
     "Paper-cut": ("(paper-cut craft:1.2), {prompt}, amazing body, detailed", "noisy, messy, blurry, realistic"),
     "Render": ("epic realistic, hyperdetailed, (cycles render:1.3), caustics, (glossy:0.58), (artstation:0.82), {prompt}", "ugly, deformed, noisy, low poly, blurry, painting"),
     "3d Movie": ("epic realistic, pixar style, disney, (cycles render:1.3), caustics, (glossy:0.58), (artstation:0.2), cute, {prompt}", "sloppy, messy, grainy, highly detailed, ultra textured, photo"),
@@ -65,6 +65,10 @@ class ImageGeneratorApp:
         # Add a checkbutton to the "Options" menu
         self.always_on_top_var = tk.BooleanVar(value=True)
         self.options_menu.add_checkbutton(label="Always on Top", onvalue=True, offvalue=False, variable=self.always_on_top_var, command=self.toggle_always_on_top)
+
+        # Add menu items for setting save path and updating script
+        self.options_menu.add_command(label="Set Save Path", command=self.set_save_path)
+        self.options_menu.add_command(label="Update Script", command=self.update_script)
 
         self.label = tk.Label(root, text="Enter your prompt and click 'GENERATE':")
         self.label.grid(row=0, column=0, columnspan=6, sticky="ew")
@@ -143,6 +147,7 @@ class ImageGeneratorApp:
         self.image = None
         self.display_image_resized = None
         self.enlarged_window = None
+        self.save_path = './GENERATED'  # Default save path
 
         self.root.bind("<Configure>", self.resize_image)
 
@@ -250,6 +255,29 @@ class ImageGeneratorApp:
 
         # Set the current style to the first style
         self.style_var.set(all_styles[0])
+
+    def set_save_path(self):
+        new_save_path = simpledialog.askstring("Set Save Path", "Enter the new save path:")
+        if new_save_path:
+            self.save_path = new_save_path
+            self.status_bar.config(text=f"Save path set to: {self.save_path}")
+            print(f"Save path set to: {self.save_path}")
+
+    def update_script(self):
+        update_url = "https://raw.githubusercontent.com/Tolerable/POLLI-GEN/main/POLLI-GEN.py"
+        try:
+            response = requests.get(update_url)
+            response.raise_for_status()
+            script_content = response.text
+            backup_path = "POLLI-GEN_backup.py"
+            with open(backup_path, "w") as backup_file:
+                with open(__file__, "r") as current_file:
+                    backup_file.write(current_file.read())
+            with open(__file__, "w") as current_file:
+                current_file.write(script_content)
+            messagebox.showinfo("Update Successful", f"Script updated successfully.\nBackup saved as {backup_path}")
+        except Exception as e:
+            messagebox.showerror("Update Failed", f"Failed to update script. Error: {e}")
 
     async def async_generate_image(self, url):
         print(f"Starting async image generation for URL: {url}")
@@ -409,13 +437,14 @@ class ImageGeneratorApp:
 
     def save_image(self, image):
         print("Saving image...")
-        if not os.path.exists('./GENERATED'):
-            os.makedirs('./GENERATED')
+        if not os.path.exists(self.save_path):
+            os.makedirs(self.save_path)
         timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         unique_id = random.randint(1000, 9999)
-        save_path = f"./GENERATED/Image-{timestamp}-{unique_id}.png"
+        save_path = os.path.join(self.save_path, f"Image-{timestamp}-{unique_id}.png")
         image.save(save_path, "PNG")
         self.saved_image_path = save_path
+        self.status_bar.config(text=f"Image saved to: {self.saved_image_path}")
         print(f"Image saved to: {self.saved_image_path}")
 
     def copy_to_clipboard(self):
@@ -472,6 +501,8 @@ class ImageGeneratorApp:
                         self.custom_width_entry.insert(0, settings[6])
                     if len(settings) > 7:
                         self.custom_height_entry.insert(0, settings[7])
+                    if len(settings) > 8:
+                        self.save_path = settings[8]
         print("Settings loaded.")
 
     def save_settings(self):
@@ -485,6 +516,7 @@ class ImageGeneratorApp:
             file.write(f"{self.ratio_var.get()}\n")
             file.write(f"{self.custom_width_entry.get()}\n")
             file.write(f"{self.custom_height_entry.get()}\n")
+            file.write(f"{self.save_path}\n")
         print("Settings saved.")
 
     def on_closing(self):
