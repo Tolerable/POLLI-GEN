@@ -200,14 +200,14 @@ class ImageGeneratorApp:
         print("Loading user styles...")
         user_styles = []
         if os.path.exists("user_styles.txt"):
-            with open("user_styles.txt", "r") as file:
+            with open("user_styles.txt", "r", encoding='utf-8') as file:
                 user_styles = [line.strip() for line in file.readlines() if not line.strip().startswith("#")]
         print(f"Loaded user styles: {user_styles}")
         return user_styles
 
     def save_user_styles(self):
         print("Saving user styles...")
-        with open("user_styles.txt", "w") as file:
+        with open("user_styles.txt", "w", encoding='utf-8') as file:
             for style in self.user_styles:
                 if not style.startswith("#"):
                     file.write(style + "\n")
@@ -225,7 +225,7 @@ class ImageGeneratorApp:
 
         # Load current styles into the text widget
         try:
-            with open("user_styles.txt", "r") as file:
+            with open("user_styles.txt", "r", encoding='utf-8') as file:
                 styles_content = file.read()
         except FileNotFoundError:
             styles_content = ""
@@ -236,7 +236,7 @@ class ImageGeneratorApp:
 
         def save_styles():
             new_styles_content = text_widget.get("1.0", tk.END)
-            with open("user_styles.txt", "w") as file:
+            with open("user_styles.txt", "w", encoding='utf-8') as file:
                 file.write(new_styles_content.strip())
             self.user_styles = [line.strip() for line in new_styles_content.strip().split("\n") if not line.strip().startswith("#") and line.strip()]
             self.save_user_styles()
@@ -525,9 +525,9 @@ class ImageGeneratorApp:
                 self.status_bar.config(text="Updating script...")
                 script_content = requests.get(remote_file_url).text
                 backup_file = __file__ + ".backup"
-                with open(backup_file, 'w') as file:
-                    file.write(open(__file__).read())
-                with open(__file__, 'w') as file:
+                with open(backup_file, 'w', encoding='utf-8') as file:
+                    file.write(open(__file__, 'r', encoding='utf-8').read())
+                with open(__file__, 'w', encoding='utf-8') as file:
                     file.write(script_content)
                 self.status_bar.config(text="Script updated. Please restart the application.")
                 print("Script updated. Please restart the application.")
