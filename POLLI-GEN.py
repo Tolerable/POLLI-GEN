@@ -11,9 +11,10 @@ import aiohttp
 
 # Define style keywords and their corresponding tags
 style_tags = {
-    "Anime": ("(anime:1.3), vibrant colors, cel shading, large expressive eyes, detailed hair, dynamic poses, action scenes, {prompt}", "realistic, deformed, noisy, blurry, stock photo"),
+    "Anime": ("(anime:1.3), line drawing, asian influence, vibrant colors, cel shading, large expressive eyes, detailed hair, dynamic poses, action scenes, {prompt}", "realistic, deformed, noisy, blurry, stock photo"),
     "Op art": ("(op art), {prompt}, optical illusions, geometric, black and white, detailed", "no illusions, organic, colorful, low detail"),
     "Caricature": ("big head, big eyes, caricature, a caricature, digital rendering, (figurativism:0.8), {prompt}", "realistic, deformed, ugly, noisy"),
+    "Cartoon-2D": ("2D, 2-d, line drawing, cartoon, flat, vibrant, drawn, animation, illustration, exaggerated features, expressive poses, whimsical, dynamic motion, humorous, {prompt}, colorful, lively, imaginative, stylized, caricatured, energetic, playful, surreal, fantastical, animated, expressive, fluid, bold outlines, clear shapes, simple forms, iconic, classic)", "(photorealistic, hyperrealistic, 3d, photo, photographic"),
     "Paper-cut": ("(paper-cut craft:1.2), {prompt}, amazing body, detailed", "noisy, messy, blurry, realistic"),
     "Render": ("epic realistic, hyperdetailed, (cycles render:1.3), caustics, (glossy:0.58), (artstation:0.82), {prompt}", "ugly, deformed, noisy, low poly, blurry, painting"),
     "3d Movie": ("epic realistic, pixar style, disney, (cycles render:1.3), caustics, (glossy:0.58), (artstation:0.2), cute, {prompt}", "sloppy, messy, grainy, highly detailed, ultra textured, photo"),
@@ -45,7 +46,7 @@ class ImageGeneratorApp:
         # Predefined styles
         self.default_styles = list(style_tags.keys())
         self.user_styles = self.load_user_styles()
-        self.styles = self.default_styles + self.user_styles
+        self.styles = self.default_styles + [style.split(":")[0] for style in self.user_styles]
 
         # Create the menu bar
         self.menu_bar = tk.Menu(self.root)
@@ -65,7 +66,7 @@ class ImageGeneratorApp:
         self.always_on_top_var = tk.BooleanVar(value=True)
         self.options_menu.add_checkbutton(label="Always on Top", onvalue=True, offvalue=False, variable=self.always_on_top_var, command=self.toggle_always_on_top)
 
-        self.label = tk.Label(root, text="Enter your prompt and click 'GENERATE IMAGE':")
+        self.label = tk.Label(root, text="Enter your prompt and click 'GENERATE':")
         self.label.grid(row=0, column=0, columnspan=6, sticky="ew")
 
         self.prompt_entry = tk.Entry(root, justify='center')
@@ -74,15 +75,15 @@ class ImageGeneratorApp:
 
         # Consolidate enhance and private checkbuttons
         self.enhance_var = tk.BooleanVar(value=False)
-        self.enhance_checkbutton = tk.Checkbutton(root, text="ENHANCE IMAGE", variable=self.enhance_var)
+        self.enhance_checkbutton = tk.Checkbutton(root, text="Enhance Image", variable=self.enhance_var)
         self.enhance_checkbutton.grid(row=2, column=0, columnspan=2, sticky="we")
 
         self.private_var = tk.BooleanVar(value=True)
-        self.private_checkbutton = tk.Checkbutton(root, text="PRIVATE", variable=self.private_var)
+        self.private_checkbutton = tk.Checkbutton(root, text="Private", variable=self.private_var)
         self.private_checkbutton.grid(row=2, column=2, columnspan=2, sticky="we")
 
         # Add seed and style on the same line
-        self.seed_label = tk.Label(root, text="SEED:")
+        self.seed_label = tk.Label(root, text="Seed:")
         self.seed_label.grid(row=3, column=0, columnspan=2, sticky="w", padx=20)
 
         self.seed_entry = tk.Entry(root, width=15)
@@ -123,15 +124,14 @@ class ImageGeneratorApp:
 
         self.toggle_ratio()  # Set the initial state based on the selected ratio option
 
-
         self.custom_style_button = tk.Button(root, text="EDIT: USER STYLES", command=self.open_custom_styles_editor)
         self.custom_style_button.grid(row=6, column=0, columnspan=6, sticky="ew")
 
-        self.generate_button = tk.Button(root, text="GENERATE IMAGE", command=self.on_generate_button_click)
-        self.generate_button.grid(row=7, column=0, columnspan=4, sticky="ew")
+        self.generate_button = tk.Button(root, text="GENERATE", command=self.on_generate_button_click)
+        self.generate_button.grid(row=7, column=0, columnspan=2, sticky="ew")
 
         self.copy_button = tk.Button(root, text="COPY", command=self.copy_to_clipboard)
-        self.copy_button.grid(row=7, column=4, columnspan=2, sticky="we")
+        self.copy_button.grid(row=7, column=2, columnspan=4, sticky="ew")
 
         self.canvas = tk.Canvas(root, bg="white", width=512, height=512)
         self.canvas.grid(row=8, column=0, columnspan=6, sticky="nsew")
@@ -190,7 +190,7 @@ class ImageGeneratorApp:
         user_styles = []
         if os.path.exists("user_styles.txt"):
             with open("user_styles.txt", "r") as file:
-                user_styles = [line.strip() for line in file.readlines()]
+                user_styles = [line.strip() for line in file.readlines() if not line.strip().startswith("#")]
         print(f"Loaded user styles: {user_styles}")
         return user_styles
 
@@ -198,53 +198,58 @@ class ImageGeneratorApp:
         print("Saving user styles...")
         with open("user_styles.txt", "w") as file:
             for style in self.user_styles:
-                file.write(style + "\n")
+                if not style.startswith("#"):
+                    file.write(style + "\n")
         print("User styles saved.")
 
     def open_custom_styles_editor(self):
         editor_window = tk.Toplevel(self.root)
         editor_window.title("Custom Styles Editor")
-        editor_window.geometry("600x400")
+        editor_window.geometry("600x430")
+        editor_window.attributes("-topmost", True)
 
-        style_listbox = tk.Listbox(editor_window)
-        style_listbox.pack(fill=tk.BOTH, expand=True)
+        # Create a text widget for editing the styles
+        text_widget = tk.Text(editor_window)
+        text_widget.pack(fill=tk.BOTH, expand=True)
 
-        for style in self.user_styles:
-            style_listbox.insert(tk.END, style)
+        # Load current styles into the text widget
+        try:
+            with open("user_styles.txt", "r") as file:
+                styles_content = file.read()
+        except FileNotFoundError:
+            styles_content = ""
 
-        def add_style():
-            new_style = simpledialog.askstring("Add Style", "Enter new style:")
-            if new_style:
-                self.user_styles.append(new_style)
-                style_listbox.insert(tk.END, new_style)
-                self.save_user_styles()
+        # Add an example format at the beginning of the text
+        example_format = "# Example format:\n# Style Name: (trait1, trait2), (negative1, negative2)\n\n"
+        text_widget.insert(tk.END, example_format + styles_content)
 
-        def edit_style():
-            selected_index = style_listbox.curselection()
-            if selected_index:
-                current_style = style_listbox.get(selected_index)
-                new_style = simpledialog.askstring("Edit Style", "Edit style:", initialvalue=current_style)
-                if new_style:
-                    self.user_styles[selected_index[0]] = new_style
-                    style_listbox.delete(selected_index)
-                    style_listbox.insert(selected_index, new_style)
-                    self.save_user_styles()
+        def save_styles():
+            new_styles_content = text_widget.get("1.0", tk.END)
+            with open("user_styles.txt", "w") as file:
+                file.write(new_styles_content.strip())
+            self.user_styles = [line.strip() for line in new_styles_content.strip().split("\n") if not line.strip().startswith("#") and line.strip()]
+            self.save_user_styles()
+            self.update_style_menu()  # Update the styles dropdown menu
+            editor_window.destroy()  # Close the editor window after saving
 
-        def remove_style():
-            selected_index = style_listbox.curselection()
-            if selected_index:
-                self.user_styles.pop(selected_index[0])
-                style_listbox.delete(selected_index)
-                self.save_user_styles()
+        save_button = tk.Button(editor_window, text="Save Styles", command=save_styles)
+        save_button.pack(side=tk.BOTTOM, padx=10, pady=10)
 
-        add_button = tk.Button(editor_window, text="Add Style", command=add_style)
-        add_button.pack(side=tk.LEFT, padx=10, pady=10)
+        editor_window.protocol("WM_DELETE_WINDOW", save_styles)
 
-        edit_button = tk.Button(editor_window, text="Edit Style", command=edit_style)
-        edit_button.pack(side=tk.LEFT, padx=10, pady=10)
+    def update_style_menu(self):
+        # Clear the current menu options
+        self.style_menu['menu'].delete(0, 'end')
 
-        remove_button = tk.Button(editor_window, text="Remove Style", command=remove_style)
-        remove_button.pack(side=tk.LEFT, padx=10, pady=10)
+        # Combine default and user styles
+        all_styles = self.default_styles + [style.split(":")[0] for style in self.user_styles]
+
+        # Add new menu options
+        for style in all_styles:
+            self.style_menu['menu'].add_command(label=style, command=tk._setit(self.style_var, style))
+
+        # Set the current style to the first style
+        self.style_var.set(all_styles[0])
 
     async def async_generate_image(self, url):
         print(f"Starting async image generation for URL: {url}")
@@ -283,13 +288,18 @@ class ImageGeneratorApp:
         # Add visual style to the prompt if selected
         style = self.style_var.get()
         print(f"User selected style: {style}")
-        if style not in style_tags:
+        if style not in style_tags and style not in [s.split(":")[0] for s in self.user_styles]:
             messagebox.showerror("Error", "Selected style is not valid")
             self.status_bar.config(text="")
             return
 
         # Combine style and prompt using style tags
-        style_prompt, _ = style_tags[style]
+        if style in style_tags:
+            style_prompt, _ = style_tags[style]
+        else:
+            style_prompt, _ = self.user_styles[[s.split(":")[0] for s in self.user_styles].index(style)].split(":")[1].split("),")
+            style_prompt = style_prompt + "), {prompt}"
+            
         full_prompt = style_prompt.format(prompt=prompt)
 
         nologo_password = self.nologo_password_entry.get()
@@ -312,11 +322,11 @@ class ImageGeneratorApp:
         params.append(f"seed={seed}")
 
         if self.ratio_var.get() == "1:1":
-            width, height = "2048", "2048"
+            width, height = "1024", "1024"
         elif self.ratio_var.get() == "3:4":
-            width, height = "1536", "2048"
+            width, height = "768", "1024"
         elif self.ratio_var.get() == "16:9":
-            width, height = "2048", "1152"
+            width, height = "1024", "576"
         else:
             width = self.custom_width_entry.get()
             height = self.custom_height_entry.get()
@@ -342,7 +352,7 @@ class ImageGeneratorApp:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to retrieve image. Error: {e}")
         finally:
-            self.status_bar.config(text="")
+            self.status_bar.config(text="Image generation complete.")
             print("Status bar reset.")
 
     def display_image(self, image):
