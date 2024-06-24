@@ -301,7 +301,7 @@ class ImageGeneratorApp:
         params = [nologo_param]
         
         if self.private_var.get():
-            params.append("private=true")
+            params.append("nofeed=true")
         
         if self.random_seed_var.get():
             seed = str(random.randint(0, 99999))
