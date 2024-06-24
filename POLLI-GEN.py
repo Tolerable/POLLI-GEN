@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog
+from tkinter import messagebox, simpledialog, filedialog
 from PIL import Image, ImageTk
 import requests
 import io
@@ -8,13 +8,14 @@ import datetime
 import random
 import asyncio
 import aiohttp
+import json
 
 # Define style keywords and their corresponding tags
 style_tags = {
     "Anime": ("(anime:1.3), line drawing, asian influence, vibrant colors, cel shading, large expressive eyes, detailed hair, dynamic poses, action scenes, {prompt}", "realistic, deformed, noisy, blurry, stock photo"),
     "Op art": ("(op art), {prompt}, optical illusions, geometric, black and white, detailed", "no illusions, organic, colorful, low detail"),
     "Caricature": ("big head, big eyes, caricature, a caricature, digital rendering, (figurativism:0.8), {prompt}", "realistic, deformed, ugly, noisy"),
-    "Cartoon-2D": ("2D, 2-d, line drawing, cartoon, flat, vibrant, drawn, animation, illustration, exaggerated features, expressive poses, whimsical, dynamic motion, humorous, {prompt}, colorful, lively, imaginative, stylized, caricatured, energetic, playful, surreal, fantastical, animated, expressive, fluid, bold outlines, clear shapes, simple forms, iconic, classic", "photorealistic, hyperrealistic, 3d, photo, photographic"),
+    "Cartoon-2D": ("2D, 2-d, line drawing, cartoon, flat, vibrant, drawn, animation, illustration, exaggerated features, expressive poses, whimsical, dynamic motion, humorous, {prompt}, colorful, lively, imaginative, stylized, caricatured, energetic, playful, surreal, fantastical, animated, expressive, fluid, bold outlines, clear shapes, simple forms, iconic, classic)", "(photorealistic, hyperrealistic, 3d, photo, photographic"),
     "Paper-cut": ("(paper-cut craft:1.2), {prompt}, amazing body, detailed", "noisy, messy, blurry, realistic"),
     "Render": ("epic realistic, hyperdetailed, (cycles render:1.3), caustics, (glossy:0.58), (artstation:0.82), {prompt}", "ugly, deformed, noisy, low poly, blurry, painting"),
     "3d Movie": ("epic realistic, pixar style, disney, (cycles render:1.3), caustics, (glossy:0.58), (artstation:0.2), cute, {prompt}", "sloppy, messy, grainy, highly detailed, ultra textured, photo"),
@@ -35,6 +36,8 @@ style_tags = {
     "Background White": ("(neutral white background), {prompt}", "ugly, deformed, noisy, blurry")
 }
 
+CURRENT_VERSION = "1.0.0"  # Update this with your current version
+
 class ImageGeneratorApp:
     def __init__(self, root):
         self.root = root
@@ -42,6 +45,8 @@ class ImageGeneratorApp:
         self.root.attributes("-topmost", True)
         self.root.geometry("520x640")
         self.root.resizable(True, True)  # Allow the window to be resizable
+
+        self.save_path = './GENERATED'  # Default save path
 
         # Predefined styles
         self.default_styles = list(style_tags.keys())
@@ -56,6 +61,12 @@ class ImageGeneratorApp:
         self.options_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.menu_bar.add_cascade(label="Options", menu=self.options_menu)
         
+        # Add the "Set Save Path" option
+        self.options_menu.add_command(label="Set Save Path", command=self.set_save_path)
+        
+        # Add the "Update Script" option
+        self.options_menu.add_command(label="Update Script", command=self.update_script)
+        
         # Add the "No Logo Password" option with entry field
         self.nologo_password_label = tk.Label(self.options_menu, text="No Logo Password (optional):")
         self.nologo_password_label.pack()
@@ -65,10 +76,6 @@ class ImageGeneratorApp:
         # Add a checkbutton to the "Options" menu
         self.always_on_top_var = tk.BooleanVar(value=True)
         self.options_menu.add_checkbutton(label="Always on Top", onvalue=True, offvalue=False, variable=self.always_on_top_var, command=self.toggle_always_on_top)
-
-        # Add menu items for setting save path and updating script
-        self.options_menu.add_command(label="Set Save Path", command=self.set_save_path)
-        self.options_menu.add_command(label="Update Script", command=self.update_script)
 
         self.label = tk.Label(root, text="Enter your prompt and click 'GENERATE':")
         self.label.grid(row=0, column=0, columnspan=6, sticky="ew")
@@ -147,7 +154,6 @@ class ImageGeneratorApp:
         self.image = None
         self.display_image_resized = None
         self.enlarged_window = None
-        self.save_path = './GENERATED'  # Default save path
 
         self.root.bind("<Configure>", self.resize_image)
 
@@ -257,27 +263,10 @@ class ImageGeneratorApp:
         self.style_var.set(all_styles[0])
 
     def set_save_path(self):
-        new_save_path = simpledialog.askstring("Set Save Path", "Enter the new save path:")
-        if new_save_path:
-            self.save_path = new_save_path
+        new_path = filedialog.askdirectory()
+        if new_path:
+            self.save_path = new_path
             self.status_bar.config(text=f"Save path set to: {self.save_path}")
-            print(f"Save path set to: {self.save_path}")
-
-    def update_script(self):
-        update_url = "https://raw.githubusercontent.com/Tolerable/POLLI-GEN/main/POLLI-GEN.py"
-        try:
-            response = requests.get(update_url)
-            response.raise_for_status()
-            script_content = response.text
-            backup_path = "POLLI-GEN_backup.py"
-            with open(backup_path, "w") as backup_file:
-                with open(__file__, "r") as current_file:
-                    backup_file.write(current_file.read())
-            with open(__file__, "w") as current_file:
-                current_file.write(script_content)
-            messagebox.showinfo("Update Successful", f"Script updated successfully.\nBackup saved as {backup_path}")
-        except Exception as e:
-            messagebox.showerror("Update Failed", f"Failed to update script. Error: {e}")
 
     async def async_generate_image(self, url):
         print(f"Starting async image generation for URL: {url}")
@@ -325,8 +314,7 @@ class ImageGeneratorApp:
         if style in style_tags:
             style_prompt, _ = style_tags[style]
         else:
-            style_prompt, _ = self.user_styles[[s.split(":")[0] for s in self.user_styles].index(style)].split(":")[1].split("),")
-            style_prompt = style_prompt + "), {prompt}"
+            style_prompt = self.user_styles[[s.split(":")[0] for s in self.user_styles].index(style)].split(":")[1].split("),")[0] + "), {prompt}"
             
         full_prompt = style_prompt.format(prompt=prompt)
 
@@ -444,7 +432,6 @@ class ImageGeneratorApp:
         save_path = os.path.join(self.save_path, f"Image-{timestamp}-{unique_id}.png")
         image.save(save_path, "PNG")
         self.saved_image_path = save_path
-        self.status_bar.config(text=f"Image saved to: {self.saved_image_path}")
         print(f"Image saved to: {self.saved_image_path}")
 
     def copy_to_clipboard(self):
@@ -518,6 +505,40 @@ class ImageGeneratorApp:
             file.write(f"{self.custom_height_entry.get()}\n")
             file.write(f"{self.save_path}\n")
         print("Settings saved.")
+
+    def update_script(self):
+        print("Checking for script updates...")
+        repo_url = "https://api.github.com/repos/Tolerable/POLLI-GEN/contents/POLLI-GEN.py"
+        headers = {"Accept": "application/vnd.github.v3+json"}
+
+        try:
+            response = requests.get(repo_url, headers=headers)
+            response.raise_for_status()
+            repo_data = response.json()
+            remote_sha = repo_data['sha']
+            remote_file_url = repo_data['download_url']
+
+            with open(__file__, 'rb') as file:
+                local_sha = requests.utils.sha256(file.read()).hexdigest()
+
+            if local_sha != remote_sha:
+                self.status_bar.config(text="Updating script...")
+                script_content = requests.get(remote_file_url).text
+                backup_file = __file__ + ".backup"
+                with open(backup_file, 'w') as file:
+                    file.write(open(__file__).read())
+                with open(__file__, 'w') as file:
+                    file.write(script_content)
+                self.status_bar.config(text="Script updated. Please restart the application.")
+                print("Script updated. Please restart the application.")
+            else:
+                self.status_bar.config(text="No updates available.")
+                print("No updates available.")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to update script. Error: {e}")
+            self.status_bar.config(text="Update failed.")
+            print(f"Failed to update script. Error: {e}")
 
     def on_closing(self):
         print("Closing application...")
