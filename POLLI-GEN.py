@@ -12,7 +12,7 @@ import threading
 import hashlib
 
 # Define the current version of the script
-CURRENT_VERSION = "1.2.108"
+CURRENT_VERSION = "1.2.114"
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -20,73 +20,54 @@ class ImageGeneratorApp:
         self.root.title("Pollinations Image Generator")
         self.root.attributes("-topmost", True)
         self.root.geometry("520x640")
-        self.root.resizable(True, True)  # Allow the window to be resizable
+        self.root.resizable(False, False)
 
-        self.save_path = os.path.abspath('./GENERATED')  # Default save path
-        self.timer_running = False  # Initialize timer running status
-        self.generating_image = False  # Flag to prevent overlapping generation requests
+        self.save_path = os.path.abspath('./GENERATED')
+        self.timer_running = False
+        self.generating_image = False
 
-        # Load styles from external file
         self.default_styles = ["Empty"]
         self.user_styles = self.load_styles_from_file()
         self.styles = self.default_styles + [style.split(":")[0] for style in self.user_styles]
 
-        # Create the menu bar
         self.menu_bar = tk.Menu(self.root)
         self.root.config(menu=self.menu_bar)
 
-        # Add the "Options" menu
         self.options_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.menu_bar.add_cascade(label="Options", menu=self.options_menu)
-        
-        # Add the "Set Save Path" option
         self.options_menu.add_command(label="Set Save Path", command=self.set_save_path)
-        
-        # Add the "Update Script" option
         self.options_menu.add_command(label="Update Script", command=self.update_script)
-        
-        # Add the "No Logo Password" option with entry field
         self.nologo_password_label = tk.Label(self.options_menu, text="No Logo Password (optional):")
         self.nologo_password_label.pack()
         self.nologo_password_entry = tk.Entry(self.options_menu)
         self.nologo_password_entry.pack()
-        
-        # Add a checkbutton to the "Options" menu
         self.always_on_top_var = tk.BooleanVar(value=True)
         self.options_menu.add_checkbutton(label="Always on Top", onvalue=True, offvalue=False, variable=self.always_on_top_var, command=self.toggle_always_on_top)
 
         self.label = tk.Label(root, text="Enter your prompt and click 'GENERATE':")
         self.label.grid(row=0, column=0, columnspan=6, sticky="ew")
-
         self.prompt_entry = tk.Entry(root, justify='center')
         self.prompt_entry.grid(row=1, column=0, columnspan=6, sticky="ew")
-        self.prompt_entry.bind("<Return>", self.on_generate_button_click)  # Bind Enter key to generate image
+        self.prompt_entry.bind("<Return>", self.on_generate_button_click)
 
-        # Consolidate enhance and private checkbuttons
         self.enhance_var = tk.BooleanVar(value=False)
         self.enhance_checkbutton = tk.Checkbutton(root, text="Enhance Image", variable=self.enhance_var)
         self.enhance_checkbutton.grid(row=2, column=0, columnspan=2, sticky="we")
-
         self.private_var = tk.BooleanVar(value=True)
         self.private_checkbutton = tk.Checkbutton(root, text="Private", variable=self.private_var)
         self.private_checkbutton.grid(row=2, column=2, columnspan=2, sticky="we")
 
-        # Add seed and style on the same line
         self.seed_label = tk.Label(root, text="Seed:")
         self.seed_label.grid(row=3, column=0, columnspan=2, sticky="w", padx=20)
-
         self.seed_entry = tk.Entry(root, width=15)
         self.seed_entry.grid(row=3, column=0, sticky="w", padx=55)
-
         self.random_seed_var = tk.BooleanVar(value=True)
         self.random_seed_checkbutton = tk.Checkbutton(text="RANDOM", variable=self.random_seed_var, command=self.toggle_random_seed)
         self.random_seed_checkbutton.grid(row=3, column=0, sticky="e")
-
-        self.style_var = tk.StringVar(value=self.default_styles[0])  # Set default style
+        self.style_var = tk.StringVar(value=self.default_styles[0])
         self.style_menu = tk.OptionMenu(root, self.style_var, *self.styles)
         self.style_menu.grid(row=3, column=3, columnspan=3, sticky="w", padx=10)
 
-        # Width and height options consolidated with ratio presets
         self.ratio_var = tk.StringVar(value="1:1")
         self.ratio_1_1 = tk.Radiobutton(root, text="1:1", variable=self.ratio_var, value="1:1", command=self.toggle_ratio, padx=50)
         self.ratio_1_1.grid(row=4, column=0, sticky="w")
@@ -94,68 +75,47 @@ class ImageGeneratorApp:
         self.ratio_3_4.grid(row=4, column=1, sticky="w")
         self.ratio_16_9 = tk.Radiobutton(root, text="16:9", variable=self.ratio_var, value="16:9", command=self.toggle_ratio)
         self.ratio_16_9.grid(row=4, column=2, sticky="w")
-
-        # Create the 'Custom' radio button
         self.ratio_custom = tk.Radiobutton(root, text="Custom", variable=self.ratio_var, value="Custom", command=self.toggle_ratio, padx=50)
         self.ratio_custom.grid(row=5, column=0, sticky="w")
-
-        # Create and place the 'W:' label and entry
         self.custom_width_label = tk.Label(root, text="W:")
         self.custom_width_label.grid(row=5, column=1, sticky="w")
         self.custom_width_entry = tk.Entry(root, width=5)
         self.custom_width_entry.grid(row=5, column=1, sticky="w", padx=25)
-
-        # Create and place the 'H:' label and entry
         self.custom_height_label = tk.Label(root, text="H:")
         self.custom_height_label.grid(row=5, column=2, sticky="w")
         self.custom_height_entry = tk.Entry(root, width=5)
         self.custom_height_entry.grid(row=5, column=2, sticky="w", padx=25)
+        self.toggle_ratio()
 
-        self.toggle_ratio()  # Set the initial state based on the selected ratio option
-
-        # Create the timer frame
         self.timer_frame = tk.Frame(root)
         self.timer_frame.grid(row=6, column=0, columnspan=6, sticky="ew")
-
-        # Timer enable checkbutton
         self.enable_timer_var = tk.BooleanVar(value=False)
         self.enable_timer_checkbutton = tk.Checkbutton(self.timer_frame, text="Enable Timer", variable=self.enable_timer_var)
         self.enable_timer_checkbutton.grid(row=0, column=0, sticky="w", padx=5)
-
-        # Retries and delay entry fields
         self.retries_label = tk.Label(self.timer_frame, text="Retries:")
         self.retries_label.grid(row=0, column=1, sticky="w", padx=5)
-
         self.retries_entry = tk.Entry(self.timer_frame, width=5)
         self.retries_entry.grid(row=0, column=2, sticky="w")
-
         self.delay_label = tk.Label(self.timer_frame, text="Delay (s):")
         self.delay_label.grid(row=0, column=3, sticky="w", padx=5)
-
         self.delay_entry = tk.Entry(self.timer_frame, width=5)
         self.delay_entry.grid(row=0, column=4, sticky="w")
 
-        # Add folder icon button to open the save path
         self.folder_button = tk.Button(root, text="📁", command=self.open_save_path, width=2)
         self.folder_button.grid(row=7, column=0, sticky="w", padx=10)
-
         self.generate_button = tk.Button(root, text="GENERATE", command=self.on_generate_button_click)
-        self.generate_button.grid(row=7, column=0, columnspan=4, sticky="ew", padx=80)
-
+        self.generate_button.grid(row=7, column=1, columnspan=4, sticky="ew", padx=80)
         self.custom_style_button = tk.Button(root, text="EDIT: USER STYLES", command=self.open_custom_styles_editor)
         self.custom_style_button.grid(row=4, column=3, sticky="ew", padx=10)
-
         self.copy_button = tk.Button(root, text="COPY", command=self.copy_to_clipboard)
         self.copy_button.grid(row=6, column=3, sticky="ew", padx=10)
 
         self.canvas = tk.Canvas(root, bg="white", width=512, height=512)
-        self.canvas.grid(row=8, column=0, columnspan=5, sticky="nsew")
+        self.canvas.grid(row=8, column=0, columnspan=6)
 
-        # Add a status bar below options
         self.status_bar = tk.Label(root, text="", bg="lightgrey", height=1)
-        self.status_bar.grid(row=9, column=0, columnspan=5, sticky="ew")
+        self.status_bar.grid(row=9, column=0, columnspan=6, sticky="ew")
 
-        # Adjust grid configuration for rows and columns
         self.root.grid_rowconfigure(8, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
@@ -163,21 +123,14 @@ class ImageGeneratorApp:
         self.root.grid_columnconfigure(3, weight=1)
         self.root.grid_columnconfigure(4, weight=1)
         self.root.grid_columnconfigure(5, weight=1)
-        self.root.grid_columnconfigure(6, weight=1)
-        self.root.grid_columnconfigure(7, weight=1)
-        
+
         self.previous_width = self.root.winfo_width()
         self.previous_height = self.root.winfo_height()
-
-        self.root.update_idletasks()  # Ensure geometry is applied before further adjustments
-
-        # Save settings on exit
+        self.root.update_idletasks()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         self.load_settings()
         print("Initialization complete.")
-
-        # Start the asyncio event loop in a separate thread
         self.loop = asyncio.new_event_loop()
         self.loop_thread = threading.Thread(target=self.loop.run_forever)
         self.loop_thread.start()
@@ -233,19 +186,15 @@ class ImageGeneratorApp:
         editor_window.title("Custom Styles Editor")
         editor_window.geometry("600x430")
         editor_window.attributes("-topmost", True)
-
-        # Create a text widget for editing the styles
         text_widget = tk.Text(editor_window)
         text_widget.pack(fill=tk.BOTH, expand=True)
 
-        # Load current styles into the text widget
         try:
             with open("user_styles.txt", "r", encoding='utf-8') as file:
                 styles_content = file.read()
         except FileNotFoundError:
             styles_content = ""
 
-        # Add an example format at the beginning of the text
         example_format = "# Example format:\n# Style Name: (positive1, positive2, positive3, etc), (negative1, negative2, etc)\n\n"
         text_widget.insert(tk.END, example_format + styles_content)
 
@@ -255,8 +204,8 @@ class ImageGeneratorApp:
                 file.write(new_styles_content.strip())
             self.user_styles = [line.strip() for line in new_styles_content.strip().split("\n") if not line.strip().startswith("#") and line.strip()]
             self.save_user_styles()
-            self.update_style_menu()  # Update the styles dropdown menu
-            editor_window.destroy()  # Close the editor window after saving
+            self.update_style_menu()
+            editor_window.destroy()
 
         save_button = tk.Button(editor_window, text="Save Styles", command=save_styles)
         save_button.pack(side=tk.BOTTOM, padx=10, pady=10)
@@ -264,17 +213,10 @@ class ImageGeneratorApp:
         editor_window.protocol("WM_DELETE_WINDOW", save_styles)
 
     def update_style_menu(self):
-        # Clear the current menu options
         self.style_menu['menu'].delete(0, 'end')
-
-        # Combine default and user styles
         all_styles = self.default_styles + [style.split(":")[0] for style in self.user_styles]
-
-        # Add new menu options
         for style in all_styles:
             self.style_menu['menu'].add_command(label=style, command=tk._setit(self.style_var, style))
-
-        # Set the current style to the first style
         self.style_var.set(all_styles[0])
 
     def set_save_path(self):
@@ -297,10 +239,10 @@ class ImageGeneratorApp:
             except aiohttp.ClientError as e:
                 print(f"Attempt {attempt + 1} failed for URL: {url} with error: {e}")
                 if attempt < retries - 1:
-                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                    await asyncio.sleep(2 ** attempt)
                 else:
                     print(f"Failed to retrieve image from {url}. Error: {e}")
-                    return None  # Return None if all attempts fail
+                    return None
 
     async def generate_images_async(self, urls):
         print(f"Generating images async for URLs: {urls}")
@@ -321,12 +263,9 @@ class ImageGeneratorApp:
             self.status_bar.config(text="")
             self.generating_image = False
             return
-        
-        # Add visual style to the prompt if selected
+
         style = self.style_var.get()
         print(f"User selected style: {style}")
-
-        # Combine style and prompt using style tags
         if style == "Empty":
             full_prompt = prompt
         elif style in [s.split(":")[0] for s in self.user_styles]:
@@ -343,12 +282,11 @@ class ImageGeneratorApp:
             nologo_param = f"nologo={nologo_password}"
         else:
             nologo_param = "nologo=true"
-        
+
         params = [nologo_param]
-        
         if self.private_var.get():
             params.append("nofeed=true")
-        
+
         if self.random_seed_var.get():
             seed = str(random.randint(0, 99999))
             self.status_bar.config(text=f"Random Seed: {seed}")
@@ -366,12 +304,10 @@ class ImageGeneratorApp:
         else:
             width = self.custom_width_entry.get()
             height = self.custom_height_entry.get()
-
         params.append(f"width={width}")
         params.append(f"height={height}")
+        params.append(f"enhance={str(self.enhance_var.get()).lower()}")
 
-        params.append(f"enhance={str(self.enhance_var.get()).lower()}")  # Explicitly set enhance to true or false
-        
         url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(full_prompt)}?{'&'.join(params)}"
         print(f"Sending request to URL: {url}")
 
@@ -380,7 +316,7 @@ class ImageGeneratorApp:
             images = [img for img in images if img is not None]
             if images:
                 print(f"Image received")
-                self.image = images[0]  # Store the original image
+                self.image = images[0]
                 self.display_image(self.image)
                 self.save_image(self.image)
             else:
@@ -396,13 +332,11 @@ class ImageGeneratorApp:
         print("Displaying image...")
         self.canvas.delete("all")
         self.tk_images = []
-        
-        # Resize to 512x512 for display
         display_image_resized = self.resize_proportionally(image, 512, 512)
         self.tk_images.append(ImageTk.PhotoImage(display_image_resized))
         self.canvas.create_image(
-             0, 0, anchor=tk.NW, image=self.tk_images[-1],
-             tags="image"
+            0, 0, anchor=tk.NW, image=self.tk_images[-1],
+            tags="image"
         )
         self.canvas.tag_bind("image", "<Button-1>", self.enlarge_image)
         self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
@@ -412,20 +346,18 @@ class ImageGeneratorApp:
     def adjust_canvas_size(self, image):
         canvas_width, canvas_height = image.size
         self.canvas.config(width=canvas_width, height=canvas_height)
-        self.root.geometry(f"{canvas_width+40}x{canvas_height+280}")  # Adjusting for the GUI elements size
+        self.root.geometry(f"{canvas_width+8}x{canvas_height+256}")  # Adjusting for the GUI elements size
 
     def resize_image(self, event):
         print("Resizing image...")
         if self.image:
             canvas_width = self.canvas.winfo_width()
             canvas_height = self.canvas.winfo_height()
-            
             resized_image = self.resize_proportionally(self.image, canvas_width, canvas_height)
             if resized_image:
                 self.tk_images[0] = ImageTk.PhotoImage(resized_image)
                 self.canvas.coords(self.canvas.find_withtag("image"), 0, 0)
                 self.canvas.itemconfig(self.canvas.find_withtag("image"), image=self.tk_images[0])
-
         self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
         print("Image resizing complete.")
 
@@ -437,11 +369,9 @@ class ImageGeneratorApp:
             print("ImageTk.PhotoImage instance found. Skipping resize.")
             return image
         image_width, image_height = image.size
-        
         ratio = min(max_width / image_width, max_height / image_height)
         new_width = int(image_width * ratio)
         new_height = int(image_height * ratio)
-        
         return image.resize((new_width, new_height), Image.LANCZOS)
 
     def save_image(self, image):
@@ -478,10 +408,9 @@ class ImageGeneratorApp:
             print("Error: No image to copy.")
 
     def enlarge_image(self, event=None):
-        if self.enlarged_window and self.enlarged_window.winfo_exists():
+        if hasattr(self, 'enlarged_window') and self.enlarged_window.winfo_exists():
             self.enlarged_window.lift()
             return
-
         print("Enlarging image...")
         self.enlarged_window = tk.Toplevel(self.root)
         self.enlarged_window.title("Enlarged Image")
@@ -502,7 +431,7 @@ class ImageGeneratorApp:
                     self.nologo_password_entry.insert(0, settings[0] if len(settings) > 0 else "")
                     self.private_var.set(settings[1] == 'True' if len(settings) > 1 else False)
                     self.seed_entry.insert(0, settings[2] if len(settings) > 2 else "")
-                    self.style_var.set(settings[3] if len(settings) > 3 else self.default_styles[0])  # Ensure default style
+                    self.style_var.set(settings[3] if len(settings) > 3 else self.default_styles[0])
                     self.enhance_var.set(settings[4] == 'True' if len(settings) > 4 else False)
                     self.ratio_var.set(settings[5] if len(settings) > 5 else "1:1")
                     if len(settings) > 6:
@@ -540,17 +469,14 @@ class ImageGeneratorApp:
         print("Checking for script updates...")
         repo_url = "https://api.github.com/repos/Tolerable/POLLI-GEN/contents/POLLI-GEN.py"
         headers = {"Accept": "application/vnd.github.v3+json"}
-
         try:
             response = requests.get(repo_url, headers=headers)
             response.raise_for_status()
             repo_data = response.json()
             remote_sha = repo_data['sha']
             remote_file_url = repo_data['download_url']
-
             with open(__file__, 'rb') as file:
                 local_sha = hashlib.sha256(file.read()).hexdigest()
-
             if local_sha != remote_sha:
                 self.status_bar.config(text="Updating script...")
                 script_content = requests.get(remote_file_url).text
@@ -564,7 +490,6 @@ class ImageGeneratorApp:
             else:
                 self.status_bar.config(text="No updates available.")
                 print("No updates available.")
-
         except Exception as e:
             messagebox.showerror("Error", f"Failed to update script. Error: {e}")
             self.status_bar.config(text="Update failed.")
@@ -597,7 +522,6 @@ class ImageGeneratorApp:
             messagebox.showerror("Error", "Please enter valid numbers for retries and delay")
             self.stop_timer()
             return
-
         while retries > 0 and self.timer_running:
             self.status_bar.config(text=f"Retries left: {retries - 1}")
             await self.generate_image()
@@ -605,7 +529,6 @@ class ImageGeneratorApp:
             retries -= 1
             self.retries_entry.delete(0, tk.END)
             self.retries_entry.insert(0, str(retries))
-
         if retries == 0:
             self.stop_timer()
             self.status_bar.config(text="Timer finished")
