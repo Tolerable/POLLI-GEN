@@ -10,9 +10,9 @@ import asyncio
 import aiohttp
 import threading
 import hashlib
-    
+
 # Define the current version of the script
-CURRENT_VERSION = "1.2.105"
+CURRENT_VERSION = "1.2.108"
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -84,7 +84,7 @@ class ImageGeneratorApp:
 
         self.style_var = tk.StringVar(value=self.default_styles[0])  # Set default style
         self.style_menu = tk.OptionMenu(root, self.style_var, *self.styles)
-        self.style_menu.grid(row=3, column=2, columnspan=3, sticky="w")
+        self.style_menu.grid(row=3, column=3, columnspan=3, sticky="w", padx=10)
 
         # Width and height options consolidated with ratio presets
         self.ratio_var = tk.StringVar(value="1:1")
@@ -136,41 +136,36 @@ class ImageGeneratorApp:
         self.delay_entry.grid(row=0, column=4, sticky="w")
 
         # Add folder icon button to open the save path
-        self.folder_button = tk.Button(root, text=" 📁 ", command=self.open_save_path, width=2)
+        self.folder_button = tk.Button(root, text="📁", command=self.open_save_path, width=2)
         self.folder_button.grid(row=7, column=0, sticky="w", padx=10)
 
         self.generate_button = tk.Button(root, text="GENERATE", command=self.on_generate_button_click)
-        self.generate_button.grid(row=7, column=0, columnspan=4, sticky="ew", padx=50)
+        self.generate_button.grid(row=7, column=0, columnspan=4, sticky="ew", padx=80)
 
         self.custom_style_button = tk.Button(root, text="EDIT: USER STYLES", command=self.open_custom_styles_editor)
-        self.custom_style_button.grid(row=6, column=2, columnspan=2, sticky="ew")
+        self.custom_style_button.grid(row=4, column=3, sticky="ew", padx=10)
 
         self.copy_button = tk.Button(root, text="COPY", command=self.copy_to_clipboard)
-        self.copy_button.grid(row=7, column=3, columnspan=2, sticky="ew")
+        self.copy_button.grid(row=6, column=3, sticky="ew", padx=10)
 
         self.canvas = tk.Canvas(root, bg="white", width=512, height=512)
-        self.canvas.grid(row=8, column=0, columnspan=6, sticky="nsew")
+        self.canvas.grid(row=8, column=0, columnspan=5, sticky="nsew")
 
         # Add a status bar below options
         self.status_bar = tk.Label(root, text="", bg="lightgrey", height=1)
-        self.status_bar.grid(row=9, column=0, columnspan=6, sticky="ew")
+        self.status_bar.grid(row=9, column=0, columnspan=5, sticky="ew")
 
-
-        self.image = None
-        self.display_image_resized = None
-        self.enlarged_window = None
-
-        self.root.bind("<Configure>", self.resize_image)
-
-        # Configure grid to make canvas expandable
-        self.root.grid_rowconfigure(9, weight=1)
+        # Adjust grid configuration for rows and columns
+        self.root.grid_rowconfigure(8, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
         self.root.grid_columnconfigure(2, weight=1)
         self.root.grid_columnconfigure(3, weight=1)
         self.root.grid_columnconfigure(4, weight=1)
         self.root.grid_columnconfigure(5, weight=1)
-
+        self.root.grid_columnconfigure(6, weight=1)
+        self.root.grid_columnconfigure(7, weight=1)
+        
         self.previous_width = self.root.winfo_width()
         self.previous_height = self.root.winfo_height()
 
@@ -541,8 +536,6 @@ class ImageGeneratorApp:
             file.write(f"{self.delay_entry.get()}\n")
         print("Settings saved.")
 
-
-
     def update_script(self):
         print("Checking for script updates...")
         repo_url = "https://api.github.com/repos/Tolerable/POLLI-GEN/contents/POLLI-GEN.py"
@@ -576,7 +569,6 @@ class ImageGeneratorApp:
             messagebox.showerror("Error", f"Failed to update script. Error: {e}")
             self.status_bar.config(text="Update failed.")
             print(f"Failed to update script. Error: {e}")
-
 
     def on_closing(self):
         print("Closing application...")
@@ -631,7 +623,7 @@ class ImageGeneratorApp:
             os.startfile(path)
         else:
             messagebox.showerror("Error", f"Save path does not exist: {path}")
-            
+
 if __name__ == "__main__":
     print("Starting application...")
     root = tk.Tk()
