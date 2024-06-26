@@ -9,9 +9,10 @@ import random
 import asyncio
 import aiohttp
 import threading
-
+import hashlib
+    
 # Define the current version of the script
-CURRENT_VERSION = "1.2.3"
+CURRENT_VERSION = "1.2.105"
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -540,6 +541,8 @@ class ImageGeneratorApp:
             file.write(f"{self.delay_entry.get()}\n")
         print("Settings saved.")
 
+
+
     def update_script(self):
         print("Checking for script updates...")
         repo_url = "https://api.github.com/repos/Tolerable/POLLI-GEN/contents/POLLI-GEN.py"
@@ -553,7 +556,7 @@ class ImageGeneratorApp:
             remote_file_url = repo_data['download_url']
 
             with open(__file__, 'rb') as file:
-                local_sha = requests.utils.sha256(file.read()).hexdigest()
+                local_sha = hashlib.sha256(file.read()).hexdigest()
 
             if local_sha != remote_sha:
                 self.status_bar.config(text="Updating script...")
@@ -573,6 +576,7 @@ class ImageGeneratorApp:
             messagebox.showerror("Error", f"Failed to update script. Error: {e}")
             self.status_bar.config(text="Update failed.")
             print(f"Failed to update script. Error: {e}")
+
 
     def on_closing(self):
         print("Closing application...")
