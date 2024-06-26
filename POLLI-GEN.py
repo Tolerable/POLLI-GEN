@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog, filedialog
+from tkinter import messagebox, filedialog
 from PIL import Image, ImageTk
 import requests
 import io
@@ -8,10 +8,10 @@ import datetime
 import random
 import asyncio
 import aiohttp
-import json
+import threading
 
 # Define the current version of the script
-CURRENT_VERSION = "1.0.0"
+CURRENT_VERSION = "1.2.3"
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -21,7 +21,9 @@ class ImageGeneratorApp:
         self.root.geometry("520x640")
         self.root.resizable(True, True)  # Allow the window to be resizable
 
-        self.save_path = './GENERATED'  # Default save path
+        self.save_path = os.path.abspath('./GENERATED')  # Default save path
+        self.timer_running = False  # Initialize timer running status
+        self.generating_image = False  # Flag to prevent overlapping generation requests
 
         # Load styles from external file
         self.default_styles = ["Empty"]
@@ -110,14 +112,40 @@ class ImageGeneratorApp:
 
         self.toggle_ratio()  # Set the initial state based on the selected ratio option
 
-        self.custom_style_button = tk.Button(root, text="EDIT: USER STYLES", command=self.open_custom_styles_editor)
-        self.custom_style_button.grid(row=6, column=0, columnspan=6, sticky="ew")
+        # Create the timer frame
+        self.timer_frame = tk.Frame(root)
+        self.timer_frame.grid(row=6, column=0, columnspan=6, sticky="ew")
+
+        # Timer enable checkbutton
+        self.enable_timer_var = tk.BooleanVar(value=False)
+        self.enable_timer_checkbutton = tk.Checkbutton(self.timer_frame, text="Enable Timer", variable=self.enable_timer_var)
+        self.enable_timer_checkbutton.grid(row=0, column=0, sticky="w", padx=5)
+
+        # Retries and delay entry fields
+        self.retries_label = tk.Label(self.timer_frame, text="Retries:")
+        self.retries_label.grid(row=0, column=1, sticky="w", padx=5)
+
+        self.retries_entry = tk.Entry(self.timer_frame, width=5)
+        self.retries_entry.grid(row=0, column=2, sticky="w")
+
+        self.delay_label = tk.Label(self.timer_frame, text="Delay (s):")
+        self.delay_label.grid(row=0, column=3, sticky="w", padx=5)
+
+        self.delay_entry = tk.Entry(self.timer_frame, width=5)
+        self.delay_entry.grid(row=0, column=4, sticky="w")
+
+        # Add folder icon button to open the save path
+        self.folder_button = tk.Button(root, text=" 📁 ", command=self.open_save_path, width=2)
+        self.folder_button.grid(row=7, column=0, sticky="w", padx=10)
 
         self.generate_button = tk.Button(root, text="GENERATE", command=self.on_generate_button_click)
-        self.generate_button.grid(row=7, column=0, columnspan=2, sticky="ew")
+        self.generate_button.grid(row=7, column=0, columnspan=4, sticky="ew", padx=50)
+
+        self.custom_style_button = tk.Button(root, text="EDIT: USER STYLES", command=self.open_custom_styles_editor)
+        self.custom_style_button.grid(row=6, column=2, columnspan=2, sticky="ew")
 
         self.copy_button = tk.Button(root, text="COPY", command=self.copy_to_clipboard)
-        self.copy_button.grid(row=7, column=2, columnspan=4, sticky="ew")
+        self.copy_button.grid(row=7, column=3, columnspan=2, sticky="ew")
 
         self.canvas = tk.Canvas(root, bg="white", width=512, height=512)
         self.canvas.grid(row=8, column=0, columnspan=6, sticky="nsew")
@@ -126,6 +154,7 @@ class ImageGeneratorApp:
         self.status_bar = tk.Label(root, text="", bg="lightgrey", height=1)
         self.status_bar.grid(row=9, column=0, columnspan=6, sticky="ew")
 
+
         self.image = None
         self.display_image_resized = None
         self.enlarged_window = None
@@ -133,7 +162,7 @@ class ImageGeneratorApp:
         self.root.bind("<Configure>", self.resize_image)
 
         # Configure grid to make canvas expandable
-        self.root.grid_rowconfigure(8, weight=1)
+        self.root.grid_rowconfigure(9, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
         self.root.grid_columnconfigure(2, weight=1)
@@ -151,6 +180,11 @@ class ImageGeneratorApp:
 
         self.load_settings()
         print("Initialization complete.")
+
+        # Start the asyncio event loop in a separate thread
+        self.loop = asyncio.new_event_loop()
+        self.loop_thread = threading.Thread(target=self.loop.run_forever)
+        self.loop_thread.start()
 
     def toggle_always_on_top(self):
         print("Toggling always on top...")
@@ -278,6 +312,10 @@ class ImageGeneratorApp:
         return await asyncio.gather(*tasks)
 
     async def generate_image(self):
+        if self.generating_image:
+            return
+
+        self.generating_image = True
         print("Generate image button clicked.")
         self.status_bar.config(text="IN QUEUE, WAITING FOR IMAGE...")
         prompt = self.prompt_entry.get()
@@ -285,6 +323,7 @@ class ImageGeneratorApp:
         if not prompt:
             messagebox.showerror("Error", "Please enter a prompt")
             self.status_bar.config(text="")
+            self.generating_image = False
             return
         
         # Add visual style to the prompt if selected
@@ -300,6 +339,7 @@ class ImageGeneratorApp:
         else:
             messagebox.showerror("Error", "Selected style is not valid")
             self.status_bar.config(text="")
+            self.generating_image = False
             return
 
         nologo_password = self.nologo_password_entry.get()
@@ -354,6 +394,7 @@ class ImageGeneratorApp:
         finally:
             self.status_bar.config(text="Image generation complete.")
             print("Status bar reset.")
+            self.generating_image = False
 
     def display_image(self, image):
         print("Displaying image...")
@@ -364,8 +405,8 @@ class ImageGeneratorApp:
         display_image_resized = self.resize_proportionally(image, 512, 512)
         self.tk_images.append(ImageTk.PhotoImage(display_image_resized))
         self.canvas.create_image(
-            0, 0, anchor=tk.NW, image=self.tk_images[-1],
-            tags="image"
+             0, 0, anchor=tk.NW, image=self.tk_images[-1],
+             tags="image"
         )
         self.canvas.tag_bind("image", "<Button-1>", self.enlarge_image)
         self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
@@ -474,6 +515,12 @@ class ImageGeneratorApp:
                         self.custom_height_entry.insert(0, settings[7])
                     if len(settings) > 8:
                         self.save_path = settings[8]
+                    if len(settings) > 9:
+                        self.enable_timer_var.set(settings[9] == 'True')
+                    if len(settings) > 10:
+                        self.retries_entry.insert(0, settings[10])
+                    if len(settings) > 11:
+                        self.delay_entry.insert(0, settings[11])
         print("Settings loaded.")
 
     def save_settings(self):
@@ -488,6 +535,9 @@ class ImageGeneratorApp:
             file.write(f"{self.custom_width_entry.get()}\n")
             file.write(f"{self.custom_height_entry.get()}\n")
             file.write(f"{self.save_path}\n")
+            file.write(f"{self.enable_timer_var.get()}\n")
+            file.write(f"{self.retries_entry.get()}\n")
+            file.write(f"{self.delay_entry.get()}\n")
         print("Settings saved.")
 
     def update_script(self):
@@ -527,13 +577,57 @@ class ImageGeneratorApp:
     def on_closing(self):
         print("Closing application...")
         self.save_settings()
+        self.loop.call_soon_threadsafe(self.loop.stop)
+        self.loop_thread.join()
         self.root.destroy()
         print("Application closed.")
 
+    def start_timer(self):
+        if not self.timer_running:
+            self.timer_running = True
+            asyncio.run_coroutine_threadsafe(self.run_timer(), self.loop)
+
+    def stop_timer(self):
+        self.timer_running = False
+        self.enable_timer_var.set(False)
+
+    async def run_timer(self):
+        if not self.timer_running:
+            return
+        try:
+            retries = int(self.retries_entry.get())
+            delay = int(self.delay_entry.get())
+        except ValueError:
+            messagebox.showerror("Error", "Please enter valid numbers for retries and delay")
+            self.stop_timer()
+            return
+
+        while retries > 0 and self.timer_running:
+            self.status_bar.config(text=f"Retries left: {retries - 1}")
+            await self.generate_image()
+            await asyncio.sleep(delay)
+            retries -= 1
+            self.retries_entry.delete(0, tk.END)
+            self.retries_entry.insert(0, str(retries))
+
+        if retries == 0:
+            self.stop_timer()
+            self.status_bar.config(text="Timer finished")
+
     def on_generate_button_click(self, event=None):
         print("Generate button clicked. Calling generate_image()...")
-        asyncio.run(self.generate_image())
+        self.status_bar.config(text="IN QUEUE, WAITING FOR IMAGE...")
+        asyncio.run_coroutine_threadsafe(self.generate_image(), self.loop)
+        if self.enable_timer_var.get() and not self.timer_running:
+            self.start_timer()
 
+    def open_save_path(self):
+        path = os.path.abspath(self.save_path)
+        if os.path.exists(path):
+            os.startfile(path)
+        else:
+            messagebox.showerror("Error", f"Save path does not exist: {path}")
+            
 if __name__ == "__main__":
     print("Starting application...")
     root = tk.Tk()
