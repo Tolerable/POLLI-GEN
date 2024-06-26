@@ -10,33 +10,8 @@ import asyncio
 import aiohttp
 import json
 
-# Define style keywords and their corresponding tags
-style_tags = {
-    "Anime": ("(anime:1.3), line drawing, asian influence, vibrant colors, cel shading, large expressive eyes, detailed hair, dynamic poses, action scenes, {prompt}", "realistic, deformed, noisy, blurry, stock photo"),
-    "Op art": ("(op art), {prompt}, optical illusions, geometric, black and white, detailed", "no illusions, organic, colorful, low detail"),
-    "Caricature": ("big head, big eyes, caricature, a caricature, digital rendering, (figurativism:0.8), {prompt}", "realistic, deformed, ugly, noisy"),
-    "Cartoon-2D": ("2D, 2-d, line drawing, cartoon, flat, vibrant, drawn, animation, illustration, exaggerated features, expressive poses, whimsical, dynamic motion, humorous, {prompt}, colorful, lively, imaginative, stylized, caricatured, energetic, playful, surreal, fantastical, animated, expressive, fluid, bold outlines, clear shapes, simple forms, iconic, classic)", "(photorealistic, hyperrealistic, 3d, photo, photographic"),
-    "Paper-cut": ("(paper-cut craft:1.2), {prompt}, amazing body, detailed", "noisy, messy, blurry, realistic"),
-    "Render": ("epic realistic, hyperdetailed, (cycles render:1.3), caustics, (glossy:0.58), (artstation:0.82), {prompt}", "ugly, deformed, noisy, low poly, blurry, painting"),
-    "3d Movie": ("epic realistic, pixar style, disney, (cycles render:1.3), caustics, (glossy:0.58), (artstation:0.2), cute, {prompt}", "sloppy, messy, grainy, highly detailed, ultra textured, photo"),
-    "Engraving": ("(grayscale, woodcut:1.2), (etching:1.1), (engraving:0.2), {prompt}, detailed", "colored, blurry, noisy, soft, deformed"),
-    "Comic book": ("neutral palette, comic style, muted colors, illustration, cartoon, soothing tones, low saturation, {prompt}", "realistic, photorealistic, blurry, noisy"),
-    "Cinematic": ("(cinematic look:1.4), soothing tones, insane details, intricate details, hyperdetailed, low contrast, soft cinematic light, dim colors, exposure blend, hdr, faded, slate gray atmosphere, {prompt}", "grayscale, black and white, monochrome"),
-    "Cinematic Horror": ("slate atmosphere, cinematic, dimmed colors, dark shot, muted colors, film grainy, lut, spooky, {prompt}", "anime, cartoon, graphic, text, painting, crayon, graphite, abstract, glitch, deformed, mutated, ugly, disfigured"),
-    "Gloomy": ("complex background, stuff in the background, highly detailed, (gloomy:1.3), dark, dimmed, hdr, vignette, grimy, (slate atmosphere:0.8), {prompt}", "depth of field, bokeh, blur, blurred, pink"),
-    "Professional photo": ("(dark shot:1.4), 80mm, {prompt}, soft light, sharp, exposure blend, medium shot, bokeh, (hdr:1.4), high contrast, (cinematic, teal and orange:0.85), (muted colors, dim colors, soothing tones:1.3), low saturation, (hyperdetailed:1.2), (noir:0.4)", "neon, over saturated"),
-    "Painting": ("(oil painting:1.2), canvas texture, brush strokes, {prompt}, vivid colors, realistic, hyperdetailed", "deformed, noisy, blurry, distorted, grainy"),
-    "Painting Vivid": ("(pascal campion:0.38), vivid colors, (painting art:0.06), [eclectic:clear:17], {prompt}", "vignette, cinematic, grayscale, bokeh, blurred, depth of field"),
-    "Midjourney Warm": ("epic realistic, {prompt}, faded, (neutral colors:1.2), art, (hdr:1.5), (muted colors:1.1), (pastel:0.2), hyperdetailed, (artstation:1.4), warm lights, dramatic light, (intricate details:1.2), vignette, complex background, rutkowski", "ugly, deformed, noisy, blurry, distorted, grainy"),
-    "Midjourney": ("(dark shot:1.1), epic realistic, {prompt}, faded, (neutral colors:1.2), (hdr:1.4), (muted colors:1.2), hyperdetailed, (artstation:1.4), cinematic, warm lights, dramatic light, (intricate details:1.1), complex background, (rutkowski:0.66), (teal and orange:0.4)", "ugly, deformed, noisy, blurry, distorted, grainy"),
-    "XpucT": ("epic realistic, {prompt}, (dark shot:1.22), neutral colors, (hdr:1.4), (muted colors:1.4), (intricate), (artstation:1.2), hyperdetailed, dramatic, intricate details, (technicolor:0.9), (rutkowski:0.8), cinematic, detailed", "ugly, deformed, noisy, blurry, distorted, grainy"),
-    "+ Details": ("(intricate details:1.12), hdr, (intricate details, hyperdetailed:1.15), {prompt}", "ugly, deformed, noisy, blurry"),
-    "Neutral Background": ("(neutral background), {prompt}", "ugly, deformed, noisy, blurry"),
-    "Background Black": ("(neutral black background), {prompt}", "ugly, deformed, noisy, blurry"),
-    "Background White": ("(neutral white background), {prompt}", "ugly, deformed, noisy, blurry")
-}
-
-CURRENT_VERSION = "1.0.0"  # Update this with your current version
+# Define the current version of the script
+CURRENT_VERSION = "1.0.0"
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -48,9 +23,9 @@ class ImageGeneratorApp:
 
         self.save_path = './GENERATED'  # Default save path
 
-        # Predefined styles
-        self.default_styles = list(style_tags.keys())
-        self.user_styles = self.load_user_styles()
+        # Load styles from external file
+        self.default_styles = ["Empty"]
+        self.user_styles = self.load_styles_from_file()
         self.styles = self.default_styles + [style.split(":")[0] for style in self.user_styles]
 
         # Create the menu bar
@@ -205,6 +180,16 @@ class ImageGeneratorApp:
         print(f"Loaded user styles: {user_styles}")
         return user_styles
 
+    def load_styles_from_file(self):
+        print("Loading styles from file...")
+        styles = []
+        styles_file = './ASSETS/styles.txt'
+        if os.path.exists(styles_file):
+            with open(styles_file, "r", encoding='utf-8') as file:
+                styles = [line.strip() for line in file.readlines() if not line.strip().startswith("#")]
+        print(f"Loaded styles: {styles}")
+        return styles
+
     def save_user_styles(self):
         print("Saving user styles...")
         with open("user_styles.txt", "w", encoding='utf-8') as file:
@@ -231,7 +216,7 @@ class ImageGeneratorApp:
             styles_content = ""
 
         # Add an example format at the beginning of the text
-        example_format = "# Example format:\n# Style Name: (trait1, trait2), (negative1, negative2)\n\n"
+        example_format = "# Example format:\n# Style Name: (positive1, positive2, positive3, etc), (negative1, negative2, etc)\n\n"
         text_widget.insert(tk.END, example_format + styles_content)
 
         def save_styles():
@@ -305,18 +290,17 @@ class ImageGeneratorApp:
         # Add visual style to the prompt if selected
         style = self.style_var.get()
         print(f"User selected style: {style}")
-        if style not in style_tags and style not in [s.split(":")[0] for s in self.user_styles]:
+
+        # Combine style and prompt using style tags
+        if style == "Empty":
+            full_prompt = prompt
+        elif style in [s.split(":")[0] for s in self.user_styles]:
+            style_prompt = self.user_styles[[s.split(":")[0] for s in self.user_styles].index(style)].split(":")[1].split("),")[0] + "), {prompt}"
+            full_prompt = style_prompt.format(prompt=prompt)
+        else:
             messagebox.showerror("Error", "Selected style is not valid")
             self.status_bar.config(text="")
             return
-
-        # Combine style and prompt using style tags
-        if style in style_tags:
-            style_prompt, _ = style_tags[style]
-        else:
-            style_prompt = self.user_styles[[s.split(":")[0] for s in self.user_styles].index(style)].split(":")[1].split("),")[0] + "), {prompt}"
-            
-        full_prompt = style_prompt.format(prompt=prompt)
 
         nologo_password = self.nologo_password_entry.get()
         if nologo_password:
@@ -475,7 +459,7 @@ class ImageGeneratorApp:
     def load_settings(self):
         print("Loading settings...")
         if os.path.exists("settings.txt"):
-            with open("settings.txt", "r") as file:
+            with open("settings.txt", "r", encoding='utf-8') as file:
                 settings = file.read().splitlines()
                 if settings:
                     self.nologo_password_entry.insert(0, settings[0] if len(settings) > 0 else "")
@@ -494,7 +478,7 @@ class ImageGeneratorApp:
 
     def save_settings(self):
         print("Saving settings...")
-        with open("settings.txt", "w") as file:
+        with open("settings.txt", "w", encoding='utf-8') as file:
             file.write(f"{self.nologo_password_entry.get()}\n")
             file.write(f"{self.private_var.get()}\n")
             file.write(f"{self.seed_entry.get()}\n")
@@ -526,7 +510,7 @@ class ImageGeneratorApp:
                 script_content = requests.get(remote_file_url).text
                 backup_file = __file__ + ".backup"
                 with open(backup_file, 'w', encoding='utf-8') as file:
-                    file.write(open(__file__, 'r', encoding='utf-8').read())
+                    file.write(open(__file__).read())
                 with open(__file__, 'w', encoding='utf-8') as file:
                     file.write(script_content)
                 self.status_bar.config(text="Script updated. Please restart the application.")
