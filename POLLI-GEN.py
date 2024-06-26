@@ -101,10 +101,10 @@ class ImageGeneratorApp:
         self.delay_entry = tk.Entry(self.timer_frame, width=5)
         self.delay_entry.grid(row=0, column=4, sticky="w")
 
-        self.folder_button = tk.Button(root, text="📁", command=self.open_save_path, width=2)
+        self.folder_button = tk.Button(root, text="📁 Images", command=self.open_save_path, width=9)
         self.folder_button.grid(row=7, column=0, sticky="w", padx=10)
         self.generate_button = tk.Button(root, text="GENERATE", command=self.on_generate_button_click)
-        self.generate_button.grid(row=7, column=1, columnspan=4, sticky="ew", padx=80)
+        self.generate_button.grid(row=7, column=0, columnspan=4, sticky="ew", padx=140)
         self.custom_style_button = tk.Button(root, text="EDIT: USER STYLES", command=self.open_custom_styles_editor)
         self.custom_style_button.grid(row=4, column=3, sticky="ew", padx=10)
         self.copy_button = tk.Button(root, text="COPY", command=self.copy_to_clipboard)
