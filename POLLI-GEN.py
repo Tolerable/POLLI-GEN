@@ -10,9 +10,11 @@ import asyncio
 import aiohttp
 import threading
 import hashlib
+import urllib.parse
+import webbrowser
 
 # Define the current version of the script
-CURRENT_VERSION = "1.2.114"
+CURRENT_VERSION = "1.2.116"
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -37,6 +39,9 @@ class ImageGeneratorApp:
         self.menu_bar.add_cascade(label="Options", menu=self.options_menu)
         self.options_menu.add_command(label="Set Save Path", command=self.set_save_path)
         self.options_menu.add_command(label="Update Script", command=self.update_script)
+        self.options_menu.add_separator()
+        self.options_menu.add_command(label="About", command=self.show_about_dialog)
+
         self.nologo_password_label = tk.Label(self.options_menu, text="No Logo Password (optional):")
         self.nologo_password_label.pack()
         self.nologo_password_entry = tk.Entry(self.options_menu)
@@ -308,7 +313,9 @@ class ImageGeneratorApp:
         params.append(f"height={height}")
         params.append(f"enhance={str(self.enhance_var.get()).lower()}")
 
-        url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(full_prompt)}?{'&'.join(params)}"
+        # URL encode the full prompt
+        encoded_prompt = urllib.parse.quote(full_prompt)
+        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?{'&'.join(params)}"
         print(f"Sending request to URL: {url}")
 
         try:
@@ -546,6 +553,21 @@ class ImageGeneratorApp:
             os.startfile(path)
         else:
             messagebox.showerror("Error", f"Save path does not exist: {path}")
+
+    def show_about_dialog(self):
+        about_text = (
+            "Pollinations Image Generator\n"
+            f"Version {CURRENT_VERSION}\n\n"
+            "This project uses the Pollinations service to generate images based on user prompts.\n"
+            "It is not an official product of Pollinations.\n\n"
+            "Contributors:\n"
+            " - Tolerable: https://github.com/Tolerable/POLLI-GEN/\n"
+            " - Scruffynerf: https://github.com/scruffynerf/\n\n"
+            "Pollinations:\n"
+            " - Website: https://pollinations.ai/\n"
+            " - Discord: https://discord.gg/8HqSRhJVxn"
+        )
+        messagebox.showinfo("About", about_text)
 
 if __name__ == "__main__":
     print("Starting application...")
