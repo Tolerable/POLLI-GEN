@@ -3,3 +3,5 @@ POLLI-GEN-*.py
 
 # Ignore generated images directory
 GENERATED/
+settings.txt
+user_styles.txt

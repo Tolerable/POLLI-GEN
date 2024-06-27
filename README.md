@@ -13,7 +13,7 @@ POLLI-GEN is a simple GUI application that generates images based on a text prom
 
 1. **Install the required libraries**:
     ```bash
-    pip install pillow requests
+    pip install -r requirements.txt
     ```
 
 2. **Run the script**:
