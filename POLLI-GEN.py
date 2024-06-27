@@ -14,7 +14,7 @@ import urllib.parse
 import webbrowser
 
 # Define the current version of the script
-CURRENT_VERSION = "1.2.116"
+CURRENT_VERSION = "1.2.118"
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -555,19 +555,48 @@ class ImageGeneratorApp:
             messagebox.showerror("Error", f"Save path does not exist: {path}")
 
     def show_about_dialog(self):
+        about_window = tk.Toplevel(self.root)
+        about_window.title("About Pollinations Image Generator")
+        about_window.geometry("500x350")
+        about_window.resizable(False, False)
+        about_window.attributes("-topmost", True)
+
+        about_frame = tk.Frame(about_window, padx=10, pady=10)
+        about_frame.pack(expand=True, fill=tk.BOTH)
+
         about_text = (
             "Pollinations Image Generator\n"
             f"Version {CURRENT_VERSION}\n\n"
             "This project uses the Pollinations service to generate images based on user prompts.\n"
             "It is not an official product of Pollinations.\n\n"
             "Contributors:\n"
-            " - Tolerable: https://github.com/Tolerable/POLLI-GEN/\n"
-            " - Scruffynerf: https://github.com/scruffynerf/\n\n"
+            " - Tolerable\n"
+            " - Scruffynerf\n\n"
             "Pollinations:\n"
-            " - Website: https://pollinations.ai/\n"
-            " - Discord: https://discord.gg/8HqSRhJVxn"
+            " - Website\n"
+            " - Discord"
         )
-        messagebox.showinfo("About", about_text)
+
+        about_label = tk.Label(about_frame, text=about_text, justify=tk.LEFT, anchor="w")
+        about_label.pack(anchor="w")
+
+        def open_link(url):
+            webbrowser.open_new_tab(url)
+
+        links = [
+            ("https://github.com/Tolerable/POLLI-GEN/", "GitHub - Tolerable"),
+            ("https://github.com/scruffynerf/", "GitHub - Scruffynerf"),
+            ("https://pollinations.ai/", "Pollinations Website"),
+            ("https://discord.gg/8HqSRhJVxn", "Pollinations Discord")
+        ]
+
+        for url, text in links:
+            link = tk.Label(about_frame, text=text, fg="blue", cursor="hand2", anchor="w", padx=10)
+            link.pack(anchor="w")
+            link.bind("<Button-1>", lambda e, url=url: open_link(url))
+
+        tk.Button(about_frame, text="Close", command=about_window.destroy).pack(pady=10, anchor="center")
+
 
 if __name__ == "__main__":
     print("Starting application...")
