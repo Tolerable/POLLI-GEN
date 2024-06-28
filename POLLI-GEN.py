@@ -14,23 +14,24 @@ import urllib.parse
 import webbrowser
 
 # Define the current version of the script
-CURRENT_VERSION = "1.2.118"
+CURRENT_VERSION = "1.2.136"
 
 class ImageGeneratorApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Pollinations Image Generator")
         self.root.attributes("-topmost", True)
-        self.root.geometry("520x640")
+        self.root.geometry("520x846")
         self.root.resizable(False, False)
 
         self.save_path = os.path.abspath('./GENERATED')
         self.timer_running = False
         self.generating_image = False
+        self.generated_images = []
 
         self.default_styles = ["Empty"]
         self.user_styles = self.load_styles_from_file()
-        self.styles = self.default_styles + [style.split(":")[0] for style in self.user_styles]
+        self.styles = self.default_styles + [style.split(":", 1)[0] for style in self.user_styles]
 
         self.menu_bar = tk.Menu(self.root)
         self.root.config(menu=self.menu_bar)
@@ -64,14 +65,15 @@ class ImageGeneratorApp:
 
         self.seed_label = tk.Label(root, text="Seed:")
         self.seed_label.grid(row=3, column=0, columnspan=2, sticky="w", padx=20)
-        self.seed_entry = tk.Entry(root, width=15)
+        self.seed_entry = tk.Entry(root, width=15, state='disabled')  # Set initial state to 'disabled'
         self.seed_entry.grid(row=3, column=0, sticky="w", padx=55)
-        self.random_seed_var = tk.BooleanVar(value=True)
+        self.random_seed_var = tk.BooleanVar(value=True)  # Set default value to True
         self.random_seed_checkbutton = tk.Checkbutton(text="RANDOM", variable=self.random_seed_var, command=self.toggle_random_seed)
         self.random_seed_checkbutton.grid(row=3, column=0, sticky="e")
+
         self.style_var = tk.StringVar(value=self.default_styles[0])
-        self.style_menu = tk.OptionMenu(root, self.style_var, *self.styles)
-        self.style_menu.grid(row=3, column=3, columnspan=3, sticky="w", padx=10)
+        self.style_button = tk.Button(root, text="Select Style", command=self.open_style_dropdown)
+        self.style_button.grid(row=3, column=3, columnspan=3, sticky="w", padx=10)
 
         self.ratio_var = tk.StringVar(value="1:1")
         self.ratio_1_1 = tk.Radiobutton(root, text="1:1", variable=self.ratio_var, value="1:1", command=self.toggle_ratio, padx=50)
@@ -110,7 +112,7 @@ class ImageGeneratorApp:
         self.folder_button.grid(row=7, column=0, sticky="w", padx=10)
         self.generate_button = tk.Button(root, text="GENERATE", command=self.on_generate_button_click)
         self.generate_button.grid(row=7, column=0, columnspan=4, sticky="ew", padx=140)
-        self.custom_style_button = tk.Button(root, text="EDIT: USER STYLES", command=self.open_custom_styles_editor)
+        self.custom_style_button = tk.Button(root, text="EDIT STYLES", command=self.open_custom_styles_editor)
         self.custom_style_button.grid(row=4, column=3, sticky="ew", padx=10)
         self.copy_button = tk.Button(root, text="COPY", command=self.copy_to_clipboard)
         self.copy_button.grid(row=6, column=3, sticky="ew", padx=10)
@@ -121,13 +123,15 @@ class ImageGeneratorApp:
         self.status_bar = tk.Label(root, text="", bg="lightgrey", height=1)
         self.status_bar.grid(row=9, column=0, columnspan=6, sticky="ew")
 
-        self.root.grid_rowconfigure(8, weight=1)
-        self.root.grid_columnconfigure(0, weight=1)
-        self.root.grid_columnconfigure(1, weight=1)
-        self.root.grid_columnconfigure(2, weight=1)
-        self.root.grid_columnconfigure(3, weight=1)
-        self.root.grid_columnconfigure(4, weight=1)
-        self.root.grid_columnconfigure(5, weight=1)
+        self.thumbnail_frame = tk.Frame(root, height=80)
+        self.thumbnail_frame.grid(row=10, column=0, columnspan=6, sticky="ew")
+        self.thumbnail_canvas = tk.Canvas(self.thumbnail_frame, height=80)
+        self.thumbnail_canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.thumbnail_scrollbar = tk.Scrollbar(self.thumbnail_frame, orient=tk.HORIZONTAL, command=self.thumbnail_canvas.xview)
+        self.thumbnail_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        self.thumbnail_canvas.configure(xscrollcommand=self.thumbnail_scrollbar.set)
+        self.thumbnail_inner_frame = tk.Frame(self.thumbnail_canvas)
+        self.thumbnail_canvas.create_window((0, 0), window=self.thumbnail_inner_frame, anchor="nw")
 
         self.previous_width = self.root.winfo_width()
         self.previous_height = self.root.winfo_height()
@@ -139,6 +143,8 @@ class ImageGeneratorApp:
         self.loop = asyncio.new_event_loop()
         self.loop_thread = threading.Thread(target=self.loop.run_forever)
         self.loop_thread.start()
+
+        self.load_existing_images()
 
     def toggle_always_on_top(self):
         print("Toggling always on top...")
@@ -162,8 +168,9 @@ class ImageGeneratorApp:
     def load_user_styles(self):
         print("Loading user styles...")
         user_styles = []
-        if os.path.exists("user_styles.txt"):
-            with open("user_styles.txt", "r", encoding='utf-8') as file:
+        user_styles_file = './ASSETS/user_styles.txt'
+        if os.path.exists(user_styles_file):
+            with open(user_styles_file, "r", encoding='utf-8') as file:
                 user_styles = [line.strip() for line in file.readlines() if not line.strip().startswith("#")]
         print(f"Loaded user styles: {user_styles}")
         return user_styles
@@ -180,13 +187,16 @@ class ImageGeneratorApp:
 
     def save_user_styles(self):
         print("Saving user styles...")
-        with open("user_styles.txt", "w", encoding='utf-8') as file:
+        user_styles_file = './ASSETS/user_styles.txt'
+        with open(user_styles_file, "w", encoding='utf-8') as file:
             for style in self.user_styles:
                 if not style.startswith("#"):
                     file.write(style + "\n")
         print("User styles saved.")
 
+
     def open_custom_styles_editor(self):
+        self.current_style_before_edit = self.style_var.get()  # Save the current style
         editor_window = tk.Toplevel(self.root)
         editor_window.title("Custom Styles Editor")
         editor_window.geometry("600x430")
@@ -194,8 +204,9 @@ class ImageGeneratorApp:
         text_widget = tk.Text(editor_window)
         text_widget.pack(fill=tk.BOTH, expand=True)
 
+        user_styles_file = './ASSETS/user_styles.txt'
         try:
-            with open("user_styles.txt", "r", encoding='utf-8') as file:
+            with open(user_styles_file, "r", encoding='utf-8') as file:
                 styles_content = file.read()
         except FileNotFoundError:
             styles_content = ""
@@ -205,24 +216,26 @@ class ImageGeneratorApp:
 
         def save_styles():
             new_styles_content = text_widget.get("1.0", tk.END)
-            with open("user_styles.txt", "w", encoding='utf-8') as file:
+            with open(user_styles_file, "w", encoding='utf-8') as file:
                 file.write(new_styles_content.strip())
             self.user_styles = [line.strip() for line in new_styles_content.strip().split("\n") if not line.strip().startswith("#") and line.strip()]
             self.save_user_styles()
-            self.update_style_menu()
+            self.update_style_button()
+            editor_window.destroy()
+
+        def on_editor_close():
+            self.style_var.set(self.current_style_before_edit)  # Restore the original style
             editor_window.destroy()
 
         save_button = tk.Button(editor_window, text="Save Styles", command=save_styles)
         save_button.pack(side=tk.BOTTOM, padx=10, pady=10)
 
-        editor_window.protocol("WM_DELETE_WINDOW", save_styles)
+        editor_window.protocol("WM_DELETE_WINDOW", on_editor_close)
 
-    def update_style_menu(self):
-        self.style_menu['menu'].delete(0, 'end')
-        all_styles = self.default_styles + [style.split(":")[0] for style in self.user_styles]
-        for style in all_styles:
-            self.style_menu['menu'].add_command(label=style, command=tk._setit(self.style_var, style))
-        self.style_var.set(all_styles[0])
+    def update_style_button(self):
+        self.styles = self.default_styles + [style.split(":", 1)[0] for style in self.user_styles]
+        self.style_var.set(self.styles[0])
+        self.style_button.config(text=f"Style: {self.styles[0]}")
 
     def set_save_path(self):
         new_path = filedialog.askdirectory()
@@ -273,8 +286,8 @@ class ImageGeneratorApp:
         print(f"User selected style: {style}")
         if style == "Empty":
             full_prompt = prompt
-        elif style in [s.split(":")[0] for s in self.user_styles]:
-            style_prompt = self.user_styles[[s.split(":")[0] for s in self.user_styles].index(style)].split(":")[1].split("),")[0] + "), {prompt}"
+        elif style in [s.split(":", 1)[0] for s in self.user_styles]:
+            style_prompt = self.user_styles[[s.split(":", 1)[0] for s in self.user_styles].index(style)].split(":", 1)[1].split("),")[0] + "), {prompt}"
             full_prompt = style_prompt.format(prompt=prompt)
         else:
             messagebox.showerror("Error", "Selected style is not valid")
@@ -326,6 +339,7 @@ class ImageGeneratorApp:
                 self.image = images[0]
                 self.display_image(self.image)
                 self.save_image(self.image)
+                self.update_thumbnails(self.image)
             else:
                 messagebox.showerror("Error", "Failed to retrieve image after multiple attempts.")
         except Exception as e:
@@ -336,6 +350,9 @@ class ImageGeneratorApp:
             self.generating_image = False
 
     def display_image(self, image):
+        if image is None:
+            print("Resize error: image is None.")
+            return
         print("Displaying image...")
         self.canvas.delete("all")
         self.tk_images = []
@@ -345,7 +362,7 @@ class ImageGeneratorApp:
             0, 0, anchor=tk.NW, image=self.tk_images[-1],
             tags="image"
         )
-        self.canvas.tag_bind("image", "<Button-1>", self.enlarge_image)
+        self.canvas.tag_bind("image", "<Button-1>", lambda e: self.enlarge_image(image=image))
         self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
         self.adjust_canvas_size(display_image_resized)
         print("Image displayed.")
@@ -353,7 +370,7 @@ class ImageGeneratorApp:
     def adjust_canvas_size(self, image):
         canvas_width, canvas_height = image.size
         self.canvas.config(width=canvas_width, height=canvas_height)
-        self.root.geometry(f"{canvas_width+8}x{canvas_height+256}")  # Adjusting for the GUI elements size
+        self.root.geometry(f"{canvas_width+8}x{canvas_height+336}")  # Adjusting for the GUI elements size
 
     def resize_image(self, event):
         print("Resizing image...")
@@ -414,7 +431,12 @@ class ImageGeneratorApp:
             messagebox.showerror("Error", "No image to copy. Generate an image first.")
             print("Error: No image to copy.")
 
-    def enlarge_image(self, event=None):
+    def enlarge_image(self, event=None, image=None):
+        if image is None:
+            image = self.image  # Use the main image if no specific image is provided
+        if image is None:
+            print("No image to enlarge.")
+            return
         if hasattr(self, 'enlarged_window') and self.enlarged_window.winfo_exists():
             self.enlarged_window.lift()
             return
@@ -423,11 +445,12 @@ class ImageGeneratorApp:
         self.enlarged_window.title("Enlarged Image")
         self.enlarged_window.geometry("800x800")
         self.enlarged_window.attributes("-topmost", True)
-        img_resized = self.image.resize((800, 800), Image.LANCZOS)
+        img_resized = image.resize((800, 800), Image.LANCZOS)
         img_tk = ImageTk.PhotoImage(img_resized)
         label = tk.Label(self.enlarged_window, image=img_tk)
         label.image = img_tk
         label.pack()
+
 
     def load_settings(self):
         print("Loading settings...")
@@ -529,16 +552,22 @@ class ImageGeneratorApp:
             messagebox.showerror("Error", "Please enter valid numbers for retries and delay")
             self.stop_timer()
             return
-        while retries > 0 and self.timer_running:
-            self.status_bar.config(text=f"Retries left: {retries - 1}")
+
+        remaining_retries = retries
+
+        while remaining_retries > 0 and self.timer_running:
+            self.status_bar.config(text=f"Retries left: {remaining_retries - 1}")
             await self.generate_image()
-            await asyncio.sleep(delay)
-            retries -= 1
+            remaining_retries -= 1
             self.retries_entry.delete(0, tk.END)
-            self.retries_entry.insert(0, str(retries))
-        if retries == 0:
-            self.stop_timer()
-            self.status_bar.config(text="Timer finished")
+            self.retries_entry.insert(0, str(remaining_retries))
+            if remaining_retries > 0:
+                await asyncio.sleep(delay)
+
+        self.stop_timer()
+        self.status_bar.config(text="Timer finished")
+        self.enable_timer_var.set(False)  # Uncheck the timer box
+
 
     def on_generate_button_click(self, event=None):
         print("Generate button clicked. Calling generate_image()...")
@@ -554,10 +583,33 @@ class ImageGeneratorApp:
         else:
             messagebox.showerror("Error", f"Save path does not exist: {path}")
 
+    def open_style_dropdown(self):
+        dropdown_window = tk.Toplevel(self.root)
+        dropdown_window.title("Select Style")
+        dropdown_window.geometry("200x300")
+        dropdown_window.attributes("-topmost", True)
+
+        listbox = tk.Listbox(dropdown_window)
+        listbox.pack(fill=tk.BOTH, expand=True)
+
+        for style in self.styles:
+            listbox.insert(tk.END, style)
+
+        def on_listbox_select(event):
+            selected_style = listbox.get(listbox.curselection())
+            self.style_var.set(selected_style)
+            self.style_button.config(text=f"Style: {selected_style}")
+            dropdown_window.destroy()
+
+        listbox.bind("<<ListboxSelect>>", on_listbox_select)
+        listbox.bind("<MouseWheel>", lambda event: listbox.yview_scroll(-1 * (event.delta // 120), "units"))
+        listbox.bind("<Prior>", lambda event: listbox.yview_scroll(-3, "units"))
+        listbox.bind("<Next>", lambda event: listbox.yview_scroll(3, "units"))
+
     def show_about_dialog(self):
         about_window = tk.Toplevel(self.root)
         about_window.title("About Pollinations Image Generator")
-        about_window.geometry("500x350")
+        about_window.geometry("500x400")
         about_window.resizable(False, False)
         about_window.attributes("-topmost", True)
 
@@ -573,8 +625,6 @@ class ImageGeneratorApp:
             " - Tolerable\n"
             " - Scruffynerf\n\n"
             "Pollinations:\n"
-            " - Website\n"
-            " - Discord"
         )
 
         about_label = tk.Label(about_frame, text=about_text, justify=tk.LEFT, anchor="w")
@@ -596,6 +646,42 @@ class ImageGeneratorApp:
             link.bind("<Button-1>", lambda e, url=url: open_link(url))
 
         tk.Button(about_frame, text="Close", command=about_window.destroy).pack(pady=10, anchor="center")
+
+    def load_existing_images(self):
+        if not os.path.exists(self.save_path):
+            return
+
+        images = sorted(
+            (os.path.join(self.save_path, f) for f in os.listdir(self.save_path) if f.endswith(".png")),
+            key=os.path.getmtime,
+            reverse=True
+        )[:50]
+
+        for image_path in images:
+            image = Image.open(image_path)
+            self.generated_images.append(image)
+
+        self.update_thumbnails()
+        if self.generated_images:
+            self.display_image(self.generated_images[0])
+
+    def update_thumbnails(self, new_image=None):
+        if new_image:
+            self.generated_images.insert(0, new_image)
+
+        for widget in self.thumbnail_inner_frame.winfo_children():
+            widget.destroy()
+
+        for img in self.generated_images:
+            thumbnail = self.resize_proportionally(img, 80, 80)
+            tk_image = ImageTk.PhotoImage(thumbnail)
+            label = tk.Label(self.thumbnail_inner_frame, image=tk_image)
+            label.image = tk_image
+            label.pack(side=tk.LEFT, padx=5)
+            label.bind("<Button-1>", lambda e, img=img: self.display_image(img))
+
+        self.thumbnail_inner_frame.update_idletasks()
+        self.thumbnail_canvas.config(scrollregion=self.thumbnail_canvas.bbox(tk.ALL))
 
 
 if __name__ == "__main__":
