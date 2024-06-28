@@ -17,7 +17,7 @@ import sys
 from tkinter import ttk
 
 # Define the current version of the script
-CURRENT_VERSION = "1.3.142"
+CURRENT_VERSION = "1.3.143"
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -610,6 +610,7 @@ class ImageGeneratorApp:
             self.start_timer()
 
     def open_save_path(self):
+        print("Opened save path")
         path = os.path.abspath(self.save_path)
         if os.path.exists(path):
             if os.name == 'nt':
