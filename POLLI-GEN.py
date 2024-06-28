@@ -12,6 +12,8 @@ import threading
 import hashlib
 import urllib.parse
 import webbrowser
+import subprocess
+import sys
 from tkinter import ttk
 
 # Define the current version of the script
@@ -117,7 +119,10 @@ class ImageGeneratorApp:
         self.delay_entry = tk.Entry(self.timer_frame, width=5)
         self.delay_entry.grid(row=0, column=4, sticky="w")
 
-        self.folder_button = tk.Button(root, text="📁 Images", command=self.open_save_path, width=9)
+        folder_text = "📁 Images" 
+        if root.tk.call('tk', 'windowingsystem') == "x11": # x11 doesnt seem to be able to render emojis
+            folder_text = "Open Images"
+        self.folder_button = tk.Button(root, text=folder_text, command=self.open_save_path, width=9)
         self.folder_button.grid(row=7, column=0, sticky="w", padx=10)
         self.generate_button = tk.Button(root, text="GENERATE", command=self.on_generate_button_click)
         self.generate_button.grid(row=7, column=0, columnspan=4, sticky="ew", padx=140)
@@ -608,10 +613,15 @@ class ImageGeneratorApp:
         print("Opened save path")
         path = os.path.abspath(self.save_path)
         if os.path.exists(path):
-            os.startfile(path)
+            if os.name == 'nt':
+                os.startfile(path)
+            elif os.name == 'posix':
+                if sys.platform == 'darwin':
+                    subprocess.run(['open', path])
+                else:
+                    subprocess.run(['xdg-open', path])
         else:
             messagebox.showerror("Error", f"Save path does not exist: {path}")
-
 
     def show_about_dialog(self):
         about_window = tk.Toplevel(self.root)
