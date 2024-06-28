@@ -15,7 +15,7 @@ import webbrowser
 from tkinter import ttk
 
 # Define the current version of the script
-CURRENT_VERSION = "1.3.142"
+CURRENT_VERSION = "1.3.143"
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -605,24 +605,13 @@ class ImageGeneratorApp:
             self.start_timer()
 
     def open_save_path(self):
+        print("Opened save path")
         path = os.path.abspath(self.save_path)
         if os.path.exists(path):
             os.startfile(path)
         else:
             messagebox.showerror("Error", f"Save path does not exist: {path}")
 
-
-
-        def on_listbox_select(event):
-            selected_style = listbox.get(listbox.curselection())
-            self.style_var.set(selected_style)
-            self.style_button.config(text=f"Style: {selected_style}")
-            dropdown_window.destroy()
-
-        listbox.bind("<<ListboxSelect>>", on_listbox_select)
-        listbox.bind("<MouseWheel>", lambda event: listbox.yview_scroll(-1 * (event.delta // 120), "units"))
-        listbox.bind("<Prior>", lambda event: listbox.yview_scroll(-3, "units"))
-        listbox.bind("<Next>", lambda event: listbox.yview_scroll(3, "units"))
 
     def show_about_dialog(self):
         about_window = tk.Toplevel(self.root)
