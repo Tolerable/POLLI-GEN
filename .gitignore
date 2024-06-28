@@ -3,5 +3,10 @@ POLLI-GEN-*.py
 
 # Ignore generated images directory
 GENERATED/
+
+# Ignore settings and user styles
 settings.txt
 user_styles.txt
+
+# Ignore mac files
+.DS_Store
