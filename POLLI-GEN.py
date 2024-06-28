@@ -15,7 +15,7 @@ import webbrowser
 from tkinter import ttk
 
 # Define the current version of the script
-CURRENT_VERSION = "1.3.143"
+CURRENT_VERSION = "1.3.144"
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -616,7 +616,7 @@ class ImageGeneratorApp:
     def show_about_dialog(self):
         about_window = tk.Toplevel(self.root)
         about_window.title("About Polli-Gen Image Generator")
-        about_window.geometry("500x335")
+        about_window.geometry("500x380")
         about_window.resizable(False, False)
         about_window.attributes("-topmost", True)
 
@@ -628,10 +628,8 @@ class ImageGeneratorApp:
             f"Version {CURRENT_VERSION}\n\n"
             "This project uses the Pollinations service to generate images based on user prompts.\n"
             "It is not an official product of Pollinations.\n\n"
-            "Original Author: Tolerable\n"
-            "Contributors:\n"
-            " - Scruffynerf\n\n"
-            "Pollinations:\n"
+            "Original Author: Tolerable\n\n"
+            "Contributors: Scruffynerf, uwoneko & Pollinations of course\n"
         )
 
         about_label = tk.Label(about_frame, text=about_text, justify=tk.LEFT, anchor="w")
@@ -643,6 +641,8 @@ class ImageGeneratorApp:
         links = [
             ("https://github.com/Tolerable/POLLI-GEN/", "POLLI-GEN by Tolerable"),
             ("https://github.com/scruffynerf/", "GitHub - Scruffynerf"),
+            ("https://github.com/uwoneko/", "GitHub - uwoneko"),
+            ("", ""),  # Insert a blank line
             ("https://pollinations.ai/", "Pollinations Website"),
             ("https://discord.gg/8HqSRhJVxn", "Pollinations Discord")
         ]
