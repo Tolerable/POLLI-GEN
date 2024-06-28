@@ -12,14 +12,15 @@ import threading
 import hashlib
 import urllib.parse
 import webbrowser
+from tkinter import ttk
 
 # Define the current version of the script
-CURRENT_VERSION = "1.2.136"
+CURRENT_VERSION = "1.2.137"
 
 class ImageGeneratorApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Pollinations Image Generator")
+        self.root.title("Polli-Gen Image Generator")
         self.root.attributes("-topmost", True)
         self.root.geometry("520x846")
         self.root.resizable(False, False)
@@ -71,9 +72,13 @@ class ImageGeneratorApp:
         self.random_seed_checkbutton = tk.Checkbutton(text="RANDOM", variable=self.random_seed_var, command=self.toggle_random_seed)
         self.random_seed_checkbutton.grid(row=3, column=0, sticky="e")
 
+        # Add this line to create an empty column before the style_combobox
+        self.root.grid_columnconfigure(2, minsize=20)
+
         self.style_var = tk.StringVar(value=self.default_styles[0])
-        self.style_button = tk.Button(root, text="Select Style", command=self.open_style_dropdown)
-        self.style_button.grid(row=3, column=3, columnspan=3, sticky="w", padx=10)
+        self.style_combobox = ttk.Combobox(root, textvariable=self.style_var, values=self.styles, state="readonly", width=17)
+        self.style_combobox.grid(row=3, column=3, columnspan=3, sticky="w", padx=10)
+        self.style_combobox.bind("<<ComboboxSelected>>", self.on_style_selected)
 
         self.ratio_var = tk.StringVar(value="1:1")
         self.ratio_1_1 = tk.Radiobutton(root, text="1:1", variable=self.ratio_var, value="1:1", command=self.toggle_ratio, padx=50)
@@ -145,6 +150,10 @@ class ImageGeneratorApp:
         self.loop_thread.start()
 
         self.load_existing_images()
+
+    def on_style_selected(self, event):
+        selected_style = self.style_var.get()
+        self.style_button.config(text=f"Style: {selected_style}")
 
     def toggle_always_on_top(self):
         print("Toggling always on top...")
@@ -583,17 +592,7 @@ class ImageGeneratorApp:
         else:
             messagebox.showerror("Error", f"Save path does not exist: {path}")
 
-    def open_style_dropdown(self):
-        dropdown_window = tk.Toplevel(self.root)
-        dropdown_window.title("Select Style")
-        dropdown_window.geometry("200x300")
-        dropdown_window.attributes("-topmost", True)
 
-        listbox = tk.Listbox(dropdown_window)
-        listbox.pack(fill=tk.BOTH, expand=True)
-
-        for style in self.styles:
-            listbox.insert(tk.END, style)
 
         def on_listbox_select(event):
             selected_style = listbox.get(listbox.curselection())
@@ -608,8 +607,8 @@ class ImageGeneratorApp:
 
     def show_about_dialog(self):
         about_window = tk.Toplevel(self.root)
-        about_window.title("About Pollinations Image Generator")
-        about_window.geometry("500x400")
+        about_window.title("About Polli-Gen Image Generator")
+        about_window.geometry("500x335")
         about_window.resizable(False, False)
         about_window.attributes("-topmost", True)
 
@@ -617,12 +616,12 @@ class ImageGeneratorApp:
         about_frame.pack(expand=True, fill=tk.BOTH)
 
         about_text = (
-            "Pollinations Image Generator\n"
+            "Polli-Gen Image Generator\n"
             f"Version {CURRENT_VERSION}\n\n"
             "This project uses the Pollinations service to generate images based on user prompts.\n"
             "It is not an official product of Pollinations.\n\n"
+            "Original Author: Tolerable\n"
             "Contributors:\n"
-            " - Tolerable\n"
             " - Scruffynerf\n\n"
             "Pollinations:\n"
         )
@@ -634,7 +633,7 @@ class ImageGeneratorApp:
             webbrowser.open_new_tab(url)
 
         links = [
-            ("https://github.com/Tolerable/POLLI-GEN/", "GitHub - Tolerable"),
+            ("https://github.com/Tolerable/POLLI-GEN/", "POLLI-GEN by Tolerable"),
             ("https://github.com/scruffynerf/", "GitHub - Scruffynerf"),
             ("https://pollinations.ai/", "Pollinations Website"),
             ("https://discord.gg/8HqSRhJVxn", "Pollinations Discord")
