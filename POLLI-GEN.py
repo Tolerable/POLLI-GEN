@@ -15,7 +15,7 @@ import webbrowser
 from tkinter import ttk
 
 # Define the current version of the script
-CURRENT_VERSION = "1.2.140"
+CURRENT_VERSION = "1.3.142"
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -43,6 +43,10 @@ class ImageGeneratorApp:
         self.options_menu.add_command(label="Update Script", command=self.update_script)
         self.options_menu.add_separator()
         self.options_menu.add_command(label="About", command=self.show_about_dialog)
+
+        self.use_negative_var = tk.BooleanVar(value=False)
+        self.options_menu.add_checkbutton(label="Use Negative Styles", onvalue=True, offvalue=False, variable=self.use_negative_var)
+
 
         self.nologo_password_label = tk.Label(self.options_menu, text="No Logo Password (optional):")
         self.nologo_password_label.pack()
@@ -295,9 +299,16 @@ class ImageGeneratorApp:
         print(f"User selected style: {style}")
         if style == "Empty":
             full_prompt = prompt
+            style_name = ""
         elif style in [s.split(":", 1)[0] for s in self.user_styles]:
-            style_prompt = self.user_styles[[s.split(":", 1)[0] for s in self.user_styles].index(style)].split(":", 1)[1].split("),")[0] + "), {prompt}"
-            full_prompt = style_prompt.format(prompt=prompt)
+            style_index = [s.split(":", 1)[0] for s in self.user_styles].index(style)
+            style_components = self.user_styles[style_index].split(":", 1)[1].split("),")
+            style_prompt = style_components[0] + f"), {prompt}"
+            full_prompt = style_prompt
+            style_name = f" {style}"
+            negative_style = style_components[1].strip() if len(style_components) > 1 else ""
+            if "anime" in style.lower():
+                style_name = " Anime style"
         else:
             messagebox.showerror("Error", "Selected style is not valid")
             self.status_bar.config(text="")
@@ -336,8 +347,14 @@ class ImageGeneratorApp:
         params.append(f"enhance={str(self.enhance_var.get()).lower()}")
 
         # URL encode the full prompt
-        encoded_prompt = urllib.parse.quote(full_prompt)
+        encoded_prompt = urllib.parse.quote(f"{full_prompt}{style_name}")
         url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?{'&'.join(params)}"
+
+        # Add negative style if enabled
+        if self.use_negative_var.get() and negative_style:
+            encoded_negative = urllib.parse.quote(negative_style)
+            url += f"&negative={encoded_negative}"
+
         print(f"Sending request to URL: {url}")
 
         try:
@@ -357,6 +374,7 @@ class ImageGeneratorApp:
             self.status_bar.config(text="Image generation complete.")
             print("Status bar reset.")
             self.generating_image = False
+
 
     def display_image(self, image):
         if image is None:
@@ -459,7 +477,6 @@ class ImageGeneratorApp:
         label.image = img_tk
         label.pack()
 
-
     def load_settings(self):
         print("Loading settings...")
         if os.path.exists("settings.txt"):
@@ -484,6 +501,8 @@ class ImageGeneratorApp:
                         self.retries_entry.insert(0, settings[10])
                     if len(settings) > 11:
                         self.delay_entry.insert(0, settings[11])
+                    if len(settings) > 12:
+                        self.use_negative_var.set(settings[12] == 'True')
         print("Settings loaded.")
 
     def save_settings(self):
@@ -501,6 +520,7 @@ class ImageGeneratorApp:
             file.write(f"{self.enable_timer_var.get()}\n")
             file.write(f"{self.retries_entry.get()}\n")
             file.write(f"{self.delay_entry.get()}\n")
+            file.write(f"{self.use_negative_var.get()}\n")
         print("Settings saved.")
 
     def update_script(self):
