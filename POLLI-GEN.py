@@ -15,7 +15,7 @@ import webbrowser
 from tkinter import ttk
 
 # Define the current version of the script
-CURRENT_VERSION = "1.3.144"
+CURRENT_VERSION = "1.3.145"
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -642,15 +642,18 @@ class ImageGeneratorApp:
             ("https://github.com/Tolerable/POLLI-GEN/", "POLLI-GEN by Tolerable"),
             ("https://github.com/scruffynerf/", "GitHub - Scruffynerf"),
             ("https://github.com/uwoneko/", "GitHub - uwoneko"),
-            ("", ""),  # Insert a blank line
+            (None, ""),  # Insert a blank line
             ("https://pollinations.ai/", "Pollinations Website"),
             ("https://discord.gg/8HqSRhJVxn", "Pollinations Discord")
         ]
 
         for url, text in links:
-            link = tk.Label(about_frame, text=text, fg="blue", cursor="hand2", anchor="w", padx=10)
+            if url is None:
+                link = tk.Label(about_frame, text="", anchor="w")  # Insert blank line
+            else:
+                link = tk.Label(about_frame, text=text, fg="blue", cursor="hand2", anchor="w", padx=10)
+                link.bind("<Button-1>", lambda e, url=url: open_link(url))
             link.pack(anchor="w")
-            link.bind("<Button-1>", lambda e, url=url: open_link(url))
 
         tk.Button(about_frame, text="Close", command=about_window.destroy).pack(pady=10, anchor="center")
 
