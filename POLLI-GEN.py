@@ -15,7 +15,7 @@ import webbrowser
 from tkinter import ttk
 
 # Define the current version of the script
-CURRENT_VERSION = "1.2.137"
+CURRENT_VERSION = "1.2.140"
 
 class ImageGeneratorApp:
     def __init__(self, root):
@@ -364,9 +364,9 @@ class ImageGeneratorApp:
             return
         print("Displaying image...")
         self.canvas.delete("all")
-        self.tk_images = []
+        self.image_to_copy = image  # Store the image for copying
         display_image_resized = self.resize_proportionally(image, 512, 512)
-        self.tk_images.append(ImageTk.PhotoImage(display_image_resized))
+        self.tk_images = [ImageTk.PhotoImage(display_image_resized)]
         self.canvas.create_image(
             0, 0, anchor=tk.NW, image=self.tk_images[-1],
             tags="image"
@@ -420,10 +420,9 @@ class ImageGeneratorApp:
 
     def copy_to_clipboard(self):
         print("Copying image to clipboard...")
-        if self.saved_image_path:
-            image = Image.open(self.saved_image_path)
+        if hasattr(self, 'image_to_copy') and self.image_to_copy:
             output = io.BytesIO()
-            image.convert("RGB").save(output, "BMP")
+            self.image_to_copy.convert("RGB").save(output, format="BMP")
             data = output.getvalue()[14:]
             output.close()
             try:
