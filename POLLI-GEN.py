@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, filedialog, ttk
+from tkinter import messagebox, filedialog
 from PIL import Image, ImageTk
 import requests
 import io
@@ -12,20 +12,17 @@ import threading
 import hashlib
 import urllib.parse
 import webbrowser
-import subprocess
-import sys
-import shutil
-
+from tkinter import ttk
 
 # Define the current version of the script
-CURRENT_VERSION = "1.3.150"
+CURRENT_VERSION = "1.3.159"
 
 class ImageGeneratorApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Polli-Gen Image Generator")
         self.root.attributes("-topmost", True)
-        self.root.geometry("610x846")
+        self.root.geometry("520x846")
         self.root.resizable(False, False)
 
         self.save_path = os.path.abspath('./GENERATED')
@@ -33,10 +30,9 @@ class ImageGeneratorApp:
         self.generating_image = False
         self.generated_images = []
 
-        self.default_styles = self.load_styles_from_file("ASSETS/STYLES.txt")
-        self.user_styles = self.load_styles_from_file("user_styles.txt")
-        self.all_styles =  ["EMPTY", "RANDOM"] + self.combine_styles(self.user_styles, self.default_styles)
-        self.style_list = [style.split(":")[0] if ":" in style else style for style in self.all_styles]
+        self.default_styles = ["Empty"]
+        self.user_styles = self.load_styles_from_file()
+        self.styles = self.default_styles + [style.split(":", 1)[0] for style in self.user_styles]
 
         self.menu_bar = tk.Menu(self.root)
         self.root.config(menu=self.menu_bar)
@@ -50,6 +46,7 @@ class ImageGeneratorApp:
 
         self.use_negative_var = tk.BooleanVar(value=False)
         self.options_menu.add_checkbutton(label="Use Negative Styles", onvalue=True, offvalue=False, variable=self.use_negative_var)
+
 
         self.nologo_password_label = tk.Label(self.options_menu, text="No Logo Password (optional):")
         self.nologo_password_label.pack()
@@ -83,12 +80,9 @@ class ImageGeneratorApp:
         self.root.grid_columnconfigure(2, minsize=20)
 
         self.style_var = tk.StringVar(value=self.default_styles[0])
-        #self.style_combobox = ttk.Combobox(root, textvariable=self.style_var, values=self.styles, state="readonly", width=17)
-        #self.style_combobox.grid(row=3, column=3, columnspan=3, sticky="w", padx=10)
-        #self.style_combobox.bind("<<ComboboxSelected>>", self.on_style_selected)
-
-        self.create_style_menu(self.style_list)
-        self.style_menu.grid(row=3, column=3, columnspan=3, sticky="w", padx=10)
+        self.style_combobox = ttk.Combobox(root, textvariable=self.style_var, values=self.styles, state="readonly", width=17)
+        self.style_combobox.grid(row=3, column=3, columnspan=3, sticky="w", padx=10)
+        self.style_combobox.bind("<<ComboboxSelected>>", self.on_style_selected)
 
         self.ratio_var = tk.StringVar(value="1:1")
         self.ratio_1_1 = tk.Radiobutton(root, text="1:1", variable=self.ratio_var, value="1:1", command=self.toggle_ratio, padx=50)
@@ -123,10 +117,7 @@ class ImageGeneratorApp:
         self.delay_entry = tk.Entry(self.timer_frame, width=5)
         self.delay_entry.grid(row=0, column=4, sticky="w")
 
-        folder_text = "📁 Images" 
-        if root.tk.call('tk', 'windowingsystem') == "x11": # x11 doesnt seem to be able to render emojis
-            folder_text = "Open Images"
-        self.folder_button = tk.Button(root, text=folder_text, command=self.open_save_path, width=9)
+        self.folder_button = tk.Button(root, text="📁 Images", command=self.open_save_path, width=9)
         self.folder_button.grid(row=7, column=0, sticky="w", padx=10)
         self.generate_button = tk.Button(root, text="GENERATE", command=self.on_generate_button_click)
         self.generate_button.grid(row=7, column=0, columnspan=4, sticky="ew", padx=140)
@@ -166,7 +157,6 @@ class ImageGeneratorApp:
 
     def on_style_selected(self, event):
         selected_style = self.style_var.get()
-        self.style_button.config(text=f"Style: {selected_style}")
 
     def toggle_always_on_top(self):
         print("Toggling always on top...")
@@ -187,48 +177,34 @@ class ImageGeneratorApp:
             self.custom_width_entry.config(state='disabled')
             self.custom_height_entry.config(state='disabled')
 
-    def combine_styles(self, styles1, styles2):
-            total_styles = styles1.copy()
-            for style_item in styles2:
-                style_name = style_item.split(":")[0]
-                if not any(item.startswith(style_name) for item in styles1):
-                    total_styles.append(style_item)
-            print(f"Total Style Count = {len(total_styles)}")
-            return total_styles
+    def load_user_styles(self):
+        print("Loading user styles...")
+        user_styles = []
+        user_styles_file = './ASSETS/user_styles.txt'
+        if os.path.exists(user_styles_file):
+            with open(user_styles_file, "r", encoding='utf-8') as file:
+                user_styles = [line.strip() for line in file.readlines() if not line.strip().startswith("#")]
+        print(f"Loaded user styles: {user_styles}")
+        return user_styles
 
-    def load_styles_from_file(self,filepath):
-            print(f"Loading styles from {filepath}")
-            if os.path.exists(filepath):
-                with open(filepath, "r", encoding='utf-8') as file:
-                    styles = [line.strip() for line in file.readlines() if not line.strip().startswith("##")]
-            totalimported = len(styles)
-            print(f"Loaded {totalimported} styles from {filepath}")
-            return styles
+    def load_styles_from_file(self):
+        print("Loading styles from file...")
+        styles = []
+        styles_file = './ASSETS/styles.txt'
+        if os.path.exists(styles_file):
+            with open(styles_file, "r", encoding='utf-8') as file:
+                styles = [line.strip() for line in file.readlines() if not line.strip().startswith("#")]
+        print(f"Loaded styles: {styles}")
+        return styles
 
     def save_user_styles(self):
         print("Saving user styles...")
-        user_styles_file = 'user_styles.txt'
+        user_styles_file = './ASSETS/user_styles.txt'
         with open(user_styles_file, "w", encoding='utf-8') as file:
             for style in self.user_styles:
-                if not style.startswith("##"):
+                if not style.startswith("#"):
                     file.write(style + "\n")
         print("User styles saved.")
-        self.user_styles = self.load_styles_from_file("user_styles.txt")
-        self.all_styles =  self.combine_styles(self.default_styles, self.user_styles)
-        self.style_list = [style.split(":")[0] if ":" in style else style for style in self.all_styles]
-        self.update_style_menu(self.all_styles)
-
-    def create_style_menu(self,all_styles):
-        self.style_menu = tk.OptionMenu(root, self.style_var, *all_styles)
-        self.update_style_menu(all_styles)
-
-    def update_style_menu(self,all_styles):
-        self.style_menu['menu'].delete(0, 'end')
-        for style in all_styles:
-            self.style_menu['menu'].add_command(label=style, command=tk._setit(self.style_var, style))
-            if style.startswith("#"):
-                self.style_menu['menu'].entryconfigure(style, state = "disabled")
-        self.style_var.set(all_styles[0])
 
 
     def open_custom_styles_editor(self):
@@ -240,21 +216,21 @@ class ImageGeneratorApp:
         text_widget = tk.Text(editor_window)
         text_widget.pack(fill=tk.BOTH, expand=True)
 
-        user_styles_file = 'user_styles.txt'
+        user_styles_file = './ASSETS/user_styles.txt'
         try:
             with open(user_styles_file, "r", encoding='utf-8') as file:
                 styles_content = file.read()
         except FileNotFoundError:
             styles_content = ""
 
-        example_format = "## Example format:\n## Style Name: (positive1, positive2, positive3, etc), (negative1, negative2, etc)\n## # Category <- add single # for groups\n"
+        example_format = "# Example format:\n# Style Name: (positive1, positive2, positive3, etc), (negative1, negative2, etc)\n\n"
         text_widget.insert(tk.END, example_format + styles_content)
 
         def save_styles():
             new_styles_content = text_widget.get("1.0", tk.END)
             with open(user_styles_file, "w", encoding='utf-8') as file:
                 file.write(new_styles_content.strip())
-            self.user_styles = [line.strip() for line in new_styles_content.strip().split("\n") if not line.strip().startswith("##") and line.strip()]
+            self.user_styles = [line.strip() for line in new_styles_content.strip().split("\n") if not line.strip().startswith("#") and line.strip()]
             self.save_user_styles()
             self.update_style_button()
             editor_window.destroy()
@@ -269,18 +245,18 @@ class ImageGeneratorApp:
         editor_window.protocol("WM_DELETE_WINDOW", on_editor_close)
 
     def update_style_button(self):
-        pass
-        #self.styles = [style.split(":", 1)[0] for style in self.user_styles]
-        #self.style_var.set(self.styles[0])
-        #self.style_button.config(text=f"Style: {self.styles[0]}")
+        self.styles = self.default_styles + [style.split(":", 1)[0] for style in self.user_styles]
+        self.style_var.set(self.styles[0])
+        self.style_button.config(text=f"Style: {self.styles[0]}")
 
     def set_save_path(self):
-        if new_path := filedialog.askdirectory():
+        new_path = filedialog.askdirectory()
+        if new_path:
             self.save_path = new_path
             self.status_bar.config(text=f"Save path set to: {self.save_path}")
 
     async def async_generate_image(self, url):
-        print(f"Starting async image generation for URL: {url}")
+        print(f"Starting async image generation for URL: {urllib.parse.unquote(url)}")
         retries = 3
         for attempt in range(retries):
             try:
@@ -288,7 +264,7 @@ class ImageGeneratorApp:
                     async with session.get(url, timeout=aiohttp.ClientTimeout(total=60)) as response:
                         response.raise_for_status()
                         content = await response.read()
-                        print(f"Image fetched successfully from URL: {url}")
+                        print(f"Image fetched successfully from URL: {urllib.parse.unquote(url)}")
                         return Image.open(io.BytesIO(content))
             except aiohttp.ClientError as e:
                 print(f"Attempt {attempt + 1} failed for URL: {url} with error: {e}")
@@ -320,30 +296,22 @@ class ImageGeneratorApp:
 
         style = self.style_var.get()
         print(f"User selected style: {style}")
-        negative_style = ""
-        if style == "RANDOM":
-            while style == "RANDOM":
-                print("Picking Style...")
-                style = random.choice(self.style_list)
-                if style in ["EMPTY"] or "#" in style:
-                    style = "RANDOM"
-            print(f"Picked {style}")
-        if style == "EMPTY":
+        if style == "Empty":
             full_prompt = prompt
-            style_name = ""
-        elif style in [s.split(":")[0] for s in self.all_styles]:
-            positive_style = self.all_styles[[s.split(":")[0] for s in self.all_styles].index(style)].split(": (")[1].split("),")[0]
-            negative_style = self.all_styles[[s.split(":")[0] for s in self.all_styles].index(style)].split(": (")[1].split("), ")[1]
-            style_prompt = f"{prompt},{positive_style}"
-            full_prompt = style_prompt
-            style_name = f" {style}"
+        elif style in [s.split(":", 1)[0] for s in self.user_styles]:
+            style_index = [s.split(":", 1)[0] for s in self.user_styles].index(style)
+            style_components = self.user_styles[style_index].split(":", 1)[1].split("),")
+            style_traits = style_components[0].strip("()").strip()
+            full_prompt = f"{prompt}, {style_traits}, {style} style".strip()
+            negative_style = style_components[1].strip("() ").strip() if len(style_components) > 1 else ""
         else:
             messagebox.showerror("Error", "Selected style is not valid")
             self.status_bar.config(text="")
             self.generating_image = False
             return
 
-        if nologo_password := self.nologo_password_entry.get():
+        nologo_password = self.nologo_password_entry.get()
+        if nologo_password:
             nologo_param = f"nologo={nologo_password}"
         else:
             nologo_param = "nologo=true"
@@ -372,25 +340,26 @@ class ImageGeneratorApp:
         params.append(f"width={width}")
         params.append(f"height={height}")
         params.append(f"enhance={str(self.enhance_var.get()).lower()}")
-        if negative_style:
-            params.append(f"negative={urllib.parse.quote(negative_style)}")
 
-
-        # URL encode the full prompt
-        encoded_prompt = urllib.parse.quote(f"{full_prompt}")
+        # Construct the prompt without parentheses around the style traits and avoid extra spaces
+        full_prompt_no_parentheses = full_prompt.replace("(", "").replace(")", "").strip()
+        encoded_prompt = urllib.parse.quote(full_prompt_no_parentheses)
         url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?{'&'.join(params)}"
 
         # Add negative style if enabled
         if self.use_negative_var.get() and negative_style:
-            encoded_negative = urllib.parse.quote(negative_style)
+            negative_style_no_parentheses = negative_style.replace("(", "").replace(")", "").strip()
+            encoded_negative = urllib.parse.quote(negative_style_no_parentheses)
             url += f"&negative={encoded_negative}"
 
-        print(f"Sending request to URL: {url}")
+        decoded_url = urllib.parse.unquote(url)
+        print(f"Sending request to URL: {decoded_url}")
 
         try:
             images = await self.generate_images_async([url])
-            if images := [img for img in images if img is not None]:
-                print("Image received")
+            images = [img for img in images if img is not None]
+            if images:
+                print(f"Image received")
                 self.image = images[0]
                 self.display_image(self.image)
                 self.save_image(self.image)
@@ -403,7 +372,6 @@ class ImageGeneratorApp:
             self.status_bar.config(text="Image generation complete.")
             print("Status bar reset.")
             self.generating_image = False
-
 
     def display_image(self, image):
         if image is None:
@@ -426,16 +394,15 @@ class ImageGeneratorApp:
     def adjust_canvas_size(self, image):
         canvas_width, canvas_height = image.size
         self.canvas.config(width=canvas_width, height=canvas_height)
-        #self.root.geometry(f"{canvas_width+8}x{canvas_height+336}")  # Adjusting for the GUI elements size
+        self.root.geometry(f"{canvas_width+8}x{canvas_height+336}")  # Adjusting for the GUI elements size
 
     def resize_image(self, event):
         print("Resizing image...")
         if self.image:
             canvas_width = self.canvas.winfo_width()
             canvas_height = self.canvas.winfo_height()
-            if resized_image := self.resize_proportionally(
-                self.image, canvas_width, canvas_height
-            ):
+            resized_image = self.resize_proportionally(self.image, canvas_width, canvas_height)
+            if resized_image:
                 self.tk_images[0] = ImageTk.PhotoImage(resized_image)
                 self.canvas.coords(self.canvas.find_withtag("image"), 0, 0)
                 self.canvas.itemconfig(self.canvas.find_withtag("image"), image=self.tk_images[0])
@@ -511,7 +478,8 @@ class ImageGeneratorApp:
         print("Loading settings...")
         if os.path.exists("settings.txt"):
             with open("settings.txt", "r", encoding='utf-8') as file:
-                if settings := file.read().splitlines():
+                settings = file.read().splitlines()
+                if settings:
                     self.nologo_password_entry.insert(0, settings[0] if len(settings) > 0 else "")
                     self.private_var.set(settings[1] == 'True' if len(settings) > 1 else False)
                     self.seed_entry.insert(0, settings[2] if len(settings) > 2 else "")
@@ -637,15 +605,10 @@ class ImageGeneratorApp:
         print("Opened save path")
         path = os.path.abspath(self.save_path)
         if os.path.exists(path):
-            if os.name == 'nt':
-                os.startfile(path)
-            elif os.name == 'posix':
-                if sys.platform == 'darwin':
-                    subprocess.run(['open', path])
-                else:
-                    subprocess.run(['xdg-open', path])
+            os.startfile(path)
         else:
             messagebox.showerror("Error", f"Save path does not exist: {path}")
+
 
     def show_about_dialog(self):
         about_window = tk.Toplevel(self.root)
