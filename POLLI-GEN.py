@@ -824,7 +824,10 @@ class ImageGeneratorApp:
         self.thumbnail_canvas.configure(scrollregion=self.thumbnail_canvas.bbox("all"))
 
     def on_thumbnail_canvas_configure(self, event):
-        self.thumbnail_canvas.itemconfig(self.thumbnail_canvas.find_withtag("window")[0], width=event.width)
+        window_items = self.thumbnail_canvas.find_withtag("window")
+        if window_items:  # Check if there is a "window" tag before accessing it
+            self.thumbnail_canvas.itemconfig(window_items[0], width=event.width)
+
 
     def update_thumbnails(self, new_image=None):
         if new_image:
