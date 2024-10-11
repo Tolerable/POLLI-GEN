@@ -1,0 +1,8 @@
+
+True
+1234
+1080
+1080
+photograph
+MULTI-MODEL
+False
